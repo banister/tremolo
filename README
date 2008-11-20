@@ -1,0 +1,35 @@
+===============================================
+Tremolo (c) 2008
+John Mair, Mark Rickerby, Paul Timmings
+===============================================
+
+A Ruby game.
+
+===============================================
+
+To run from source, first install Gosu:
+
+  $> gem install gosu
+
+Then run the app:
+
+  $> ruby tremolo.rb
+
+===============================================
+
+Build depends on Rake and RubyScript2Exe:
+
+  $> gem install rake
+  $> gem install rubyscript2exe
+
+To run the full build script:
+
+  $> rake
+
+For individual platforms:
+
+  $> rake build_osx - generates Tremolo.app
+
+  $> rake build_exe - generates Tremolo.exe
+
+
