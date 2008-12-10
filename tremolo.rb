@@ -1,3 +1,4 @@
+
 # John Mair 2008
 # Tremolo
 
@@ -40,6 +41,6 @@ class MyWindow < Gosu::Window
 
 end
 
+
 w = MyWindow.new
 w.show
-
