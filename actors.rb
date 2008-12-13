@@ -19,7 +19,6 @@ class Physor < Actor
     attr_accessor :mag
 
     def setup(hash_args)
-
         setup_vars(hash_args)
 
         setup_sound do
@@ -37,7 +36,6 @@ class Physor < Actor
         setup_gfx do
             make_animation(:standard, load_image(img), :timing => 1)
         end
-        
     end
     
     def setup_vars(hash_args)
@@ -67,12 +65,10 @@ class Physor < Actor
     end
 
     private :setup_sound, :setup_gfx
-
 end
 
 #Simple interactable object, just for testing purposes
 class SampleActor < Actor
-
     def setup
         setup_gfx do
             make_animation(:dying, load_frames("assets/lanternsmoke.png",20,18),:timing => 0.05,
@@ -125,7 +121,6 @@ class SampleActor < Actor
     end
 
     private :setup_sound, :setup_gfx
-
 end
 
 #Weaponry  object
@@ -141,7 +136,6 @@ class Projectile  < PhysicalActor
         setup_sound do
             add_effect(:bullet,"assets/bullet.wav")
         end
-
     end
 
     def setup_vars(hash_args)
@@ -175,7 +169,6 @@ class Projectile  < PhysicalActor
     end
 
     private :check_collision, :setup_gfx, :setup_sound
-
 end
 
 
@@ -187,14 +180,12 @@ class Digger  < PhysicalActor
 
     state(:Digging) {
         def state_entry(tile)
-
             @timer = Time.now.to_f
             @cur_tile = tile
             @anchor_y = @y
         end
 
         def update
-
             if(Time.now.to_f - @timer) > 1 then
                 state nil
             end
@@ -202,12 +193,12 @@ class Digger  < PhysicalActor
             @y = @anchor_y + rand(4)
 
             collide_sound
-
+        end
 
         def state_exit
             @cur_tile.do_collision(self, 0, @height/2)
             @y = @anchor_y
-            @phys.reset_physics(self)
+            reset_physics
         end
     }
 
@@ -222,7 +213,6 @@ class Digger  < PhysicalActor
         end
 
         toggle_gravity_only
-        
     end
 
     def do_collision(collider)
@@ -235,7 +225,6 @@ class Digger  < PhysicalActor
         when Tile
             state Digging, collider
         end
-
     end
 
     def collide_sound
@@ -256,7 +245,6 @@ class Digger  < PhysicalActor
     end
 
     private :check_collision, :setup_gfx, :setup_sound
-
 end
 
 
@@ -305,13 +293,11 @@ class Andy  < PhysicalActor
     }
 
     def setup
-
         setup_gfx do 
             make_animation(:standard, load_image("assets/dude.png"), :timing => 1, :hold => true)
         end
 
         setup_controls
- 
     end
 
     def setup_controls
@@ -327,8 +313,7 @@ class Andy  < PhysicalActor
     end
 
     def apply_physics
-
-        new_x, new_y = @phys.do_physics(self)
+        new_x, new_y = do_physics
         
         #if collide with tile on way up then begin descent immediately
         if @env.check_collision(self, 0, -@height/2) then @init_y = 0 end
@@ -347,7 +332,6 @@ class Andy  < PhysicalActor
         if !@env.check_collision(self, 0, y_direc * @height/2) then
             @y = new_y
         end
-        
     end
 
     def info
@@ -374,9 +358,7 @@ class Andy  < PhysicalActor
         end
     end
 
-
     private :check_collision, :setup_gfx, :setup_sound
-
 end
 
 
