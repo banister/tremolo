@@ -58,13 +58,15 @@ class Actor
     #important to use width/height, so as not to use *_offset of boundingbox module, stay loosely coupled
     attr_reader :width, :height
 
-    def initialize(window)
-        @window = window
+    def initialize(hash_args)
+        check_args(hash_args, :window)
+
+        @window = hash_args[:window]
         
-        basic_setup
+        basic_setup(hash_args)
     end
 
-    def basic_setup
+    def basic_setup(hash_args)
         
         #Objects are born alive and interactive and self-propelled
         @idle = false
@@ -76,12 +78,16 @@ class Actor
         @anim = ImageSystem.new(@window)
         @anim_group = AnimGroup.new
 
-        setup
+        if method(:setup).arity == 0 then
+            setup
+        else
+            setup(hash_args)
+        end
         
     end
 
     #must be implemented by subclasses 
-    def setup; end
+    def setup(hash_args); end
 
     def setup_sound(&block)
         @effects.instance_eval(&block)
@@ -134,7 +140,6 @@ class Actor
         # choose An or A depending on whether class name begins with a vowel
         article_one = s_class[0,1]=~/[aeiou]/i ? "An" : "A"
         article_two = c_class[0,1]=~/[aeiou]/i ? "an" : "a"
-
     end
 
     def warp(x, y)
@@ -162,7 +167,19 @@ class Actor
 
     def info; "Object information:\nActor.info: this method needs to be overridden."; end
 
-    private :visible?
+    def check_args(hash_args, *args)
+        raise ArgumentError, "not a hash" if !hash_args.instance_of?(Hash)
+        if (hash_args.keys & args).size != args.size then
+            raise ArgumentError, "some required hash keys were missing"
+        end
+        nil
+    end
+
+    def physical?
+        false
+    end
+
+    private :visible?, :check_args
 end
 ######################## End Actor ###########################
 
@@ -187,23 +204,52 @@ class PhysicalActor < Actor
     }
 
     attr_accessor :time, :init_x, :init_y
+    attr_reader :phys_info
 
-    def initialize(window, world, phys, env, angle=0, vel=0)
 
-        @window = window
-        @world = world
-        @env = env
-        @phys = phys
+    def basic_setup(hash_args)
+        check_args(hash_args, :world, :phys, :env)
+
+        @world = hash_args[:world]
+        @phys = hash_args[:phys]
+        @env = hash_args[:env]
 
         @time = @init_x = @init_y = @x = @y = 0
-        
-        basic_setup
+        @phys_info = { }
+        @phys_info[:physical] = true
+        @phys_info[:gravity_only] = false
+
+        super
+    end
+
+    def reset_physics
+        @phys.reset_physics(self)
+    end
+
+    def do_physics
+        @phys.do_physics(self)
+    end
+
+    def toggle_physics
+        @phys_info[:physical] = ! @phys_info[:physical]
+    end
+
+    def toggle_gravity_only
+        @phys_info[:gravity_only] = ! @phys_info[:gravity_only]
+    end
+
+    def physical?
+        @phys_info[:physical]
+    end
+
+    def gravity_only?
+        @phys_info[:gravity_only]
     end
 
     def check_tile_collision
         
         if tile=@env.check_collision(self, 0, @height / 2) then
-            @phys.reset_physics(self)
+            reset_physics
             @init_y = 0
             @init_x = 0 
             self.do_collision(tile)
@@ -220,9 +266,11 @@ class PhysicalActor < Actor
 
     def update
         check_collision
-        @x, @y = @phys.do_physics(self)
+        @x, @y = do_physics
         check_bounds
     end
+
+    private :reset_physics, :do_physics, :toggle_gravity_only, :toggle_physics, :gravity_only?
 
 end
 #################### End PhysicalActor #######################

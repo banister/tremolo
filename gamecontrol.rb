@@ -66,20 +66,20 @@ class GameController
         puts "creating #{num_Sample_Actors} SampleActors..."
 
         num_Sample_Actors.times  {
-            @world.push(SampleActor.new(@window))
+            @world.push(SampleActor.new(:window => @window))
         }
         num_Diggers.times {
-            @world.push(Digger.new(@window, @world, @phys, @env))
+            @world.push(Digger.new(:window => @window, :world => @world, :phys => @phys, :env => @env))
         }
         num_Physors.times {
             mag = rand(40)-20
-            @world.push(Physor.new(@window, @phys, mag))
+            @world.push(Physor.new(:window => @window, :phys => @phys, :mag => mag))
             puts "creating Physor of mag #{mag}..."
         }
 
         # @world.push(Physor.new(@phys, -200, @window))
         num_Andys.times {
-            @world.push(Andy.new(@window, @world, @phys, @env))
+            @world.push(Andy.new(:window => @window, :world => @world, :phys => @phys, :env => @env))
         }
 
         puts "randomizing positions of game actors..."

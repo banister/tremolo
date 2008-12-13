@@ -73,7 +73,7 @@ class ImageSystem
     
     def load_queue(*args)
         @queue = args     
-        if(@queue && !@queue.empty?) then load_animation(@queue.shift); end
+        if @queue && !@queue.empty? then load_animation(@queue.shift); end
     end   
     
     def stop
@@ -311,10 +311,14 @@ class PhysicsController
         return [x_acc,y_acc]
     end
 
-    def do_physics(actor)
+    def do_physics(actor, field = true)
+
+        if !actor.phys_info[:physical] then
+            return [actor.x, actor.y]
+        end
         
         # acceleration
-        ax, ay = get_field(actor)
+        ax, ay = actor.phys_info[:gravity_only] ? [0, Grav] : get_field(actor) 
         
         # velocity differentials
         dx = ax * actor.time * Time_tick + actor.init_x * Time_tick
@@ -334,8 +338,8 @@ class PhysicsController
         actor.time = 0
     end
     
-    def grav
-        [0, Grav]
+    def do_grav
+        do_physics(false)
     end
     
 end

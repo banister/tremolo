@@ -54,10 +54,12 @@ class Player < Actor
 
         x1 = @facing * turret.x + turret.length*Math::cos((@angle / 360.0) * (2 * Math::PI))
         y1 = turret.y + turret.length * Math::sin(@angle / 360 * (2 * Math::PI))
-        new_ball = Projectile.new(@window ,@x + x1, @y + y1,360 - @angle,@velocity,self,@world,@phys,@env)
+        new_ball = Projectile.new(:window => @window ,:x => @x + x1, :y =>  @y + y1,
+                                  :angle => 360 - @angle, :velocity => @velocity, :owner => self,
+                                  :world => @world, :phys => @phys, :env => @env)
         
         #change turret animation
-        turret.anims.load_queue(:fire,:standard)
+        turret.anims.load_queue(:fire, :standard)
 
         #sound effect
         @tank.effects.play_effect(:tankshot)
@@ -72,7 +74,6 @@ class Player < Actor
         check_collision
         return self
     end
-
     def do_controls(control_id=nil)
 
         #parameter-based control keys

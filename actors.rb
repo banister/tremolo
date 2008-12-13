@@ -18,42 +18,40 @@ class Physor < Actor
     #magnitude of Physor (strength of force)
     attr_accessor :mag
 
-    def initialize(window, phys, mag)
-        super(window)
-        @phys = phys
-        @mag = mag
-        @window = window
+    def setup(hash_args)
 
-        @phys.set_physor(self)
+        setup_vars(hash_args)
 
-        setup_gfx
-        setup_sound
+        setup_sound do
+            add_effect(:static,"assets/static.wav")
+            add_effect(:vortex,"assets/vortex.wav")
+        end
+
+        img = case @mag < 0
+                when true
+                    "assets/repulsor.png"
+                when false
+                    "assets/sphere.png"
+                end
+
+        setup_gfx do
+            make_animation(:standard, load_image(img), :timing => 1)
+        end
+        
     end
     
-
-    def setup_sound(&block)
-        @effects = EffectsSystem.new(@window)
-        @effects.add_effect(:static,"assets/static.wav")
-        @effects.add_effect(:vortex,"assets/vortex.wav")
-
-    end
-
-    def setup_gfx
-        @image = case @mag < 0
-                 when true
-                     Gosu::Image.new(@window,"assets/repulsor.png",false)
-                 when false
-                     Gosu::Image.new(@window, "assets/sphere.png", false)
-                 end
-
-        @width = @image.width
-        @height = @image.height
-        set_bounding_box(@width,@height)
+    def setup_vars(hash_args)
+        check_args(hash_args, :mag, :phys)
+        
+        @mag = hash_args[:mag]
+        @phys = hash_args[:phys]
+        
+        @phys.set_physor(self)
     end
 
     def within_range(actor,acc)
         if !intersect?(actor) then
-            volume = [acc**3,900.0].min/900.0
+            volume = [acc ** 3,900.0].min / 900.0
             @effects.play_effect(:static,volume)
         end
     end
@@ -63,14 +61,6 @@ class Physor < Actor
         if Projectile === collider then @effects.play_effect(:vortex); end
     end
 
-    def draw(ox, oy)
-
-        sx = @x - ox
-        sy = @y - oy
-
-        return if !visible?(sx,sy)
-        @image.draw_rot(sx, sy, Common::ZOrder::Actor, 0.0)
-    end
 
     def info
         "Object information:\nType: #{self.class}; Magnitude: #{@mag}"
@@ -141,16 +131,9 @@ end
 #Weaponry  object
 class Projectile  < PhysicalActor
 
-    def initialize(window, x, y, angle, vel, owner, world, phys, env)
-        super(window, world, phys, env)
+    def setup(hash_args)
+        setup_vars(hash_args)
         
-        @x,@y = x,y       
-        @owner = owner
-        @init_x = vel * Math::cos((angle / 180) * Math::PI)  #initial velocity for x
-        @init_y = vel * Math::sin((angle / 180) * Math::PI)  #initial velocity for y
-    end
-
-    def setup
         setup_gfx do
             make_animation(:standard, load_image("assets/ball.png"), :timing => 1)
         end
@@ -161,9 +144,24 @@ class Projectile  < PhysicalActor
 
     end
 
+    def setup_vars(hash_args)
+        check_args(hash_args, :x, :y, :angle, :velocity, :owner)
+        
+        @x = hash_args[:x]
+        @y = hash_args[:y]
+        @owner = hash_args[:owner]
+
+        angle = hash_args[:angle]
+        velocity = hash_args[:velocity]
+
+        @init_x = velocity * Math::cos((angle / 180) * Math::PI)  #initial velocity for x
+        @init_y = velocity * Math::sin((angle / 180) * Math::PI)  #initial velocity for y
+    end
+
     def do_collision(collider)
         super
-        @owner.projectile_collided_with(collider,self)  #let owner know of collision
+        @owner.projectile_collided_with(collider, self)  #let owner know of collision
+        
         case collider
         when Projectile
             @effects.play_effect(:bullet)
@@ -185,39 +183,35 @@ end
 class Digger  < PhysicalActor
     include Stateology
 
+    Grav_only = true
+
     state(:Digging) {
         def state_entry(tile)
 
             @timer = Time.now.to_f
-            @ctile = tile
+            @cur_tile = tile
             @anchor_y = @y
         end
 
         def update
 
             if(Time.now.to_f - @timer) > 1 then
-                state Default
+                state nil
             end
-
-            #stop digging if selected by mouse
-            state Default if freeze
 
             @y = @anchor_y + rand(4)
 
             collide_sound
 
-        end
 
         def state_exit
-            @ctile.do_collision(self, 0, @height/2)
+            @cur_tile.do_collision(self, 0, @height/2)
             @y = @anchor_y
             @phys.reset_physics(self)
         end
     }
 
-
     def setup
-
         setup_gfx do 
             make_animation(:standard, load_image("assets/drill3.png"), :timing => 1, :hold => true)
         end
@@ -226,8 +220,9 @@ class Digger  < PhysicalActor
             add_effect(:bullet,"assets/bullet.wav")
             add_effect(:drill,"assets/quake.ogg")
         end
-            
 
+        toggle_gravity_only
+        
     end
 
     def do_collision(collider)
@@ -237,7 +232,8 @@ class Digger  < PhysicalActor
         when Projectile, Digger
             @effects.play_effect(:bullet)
             @expired = true
-
+        when Tile
+            state Digging, collider
         end
 
     end
@@ -251,10 +247,6 @@ class Digger  < PhysicalActor
 
         if(tile=@env.check_collision(self, 0, @height/2)) then
 
-            #when collide with tile, change state to :Digging, maybe put this in the self.do_collision ?
-            state Digging, tile
-
-            #pretty much no self collision behaviour, all of it occurs in the tile
             self.do_collision(tile)
         end
     end
@@ -274,6 +266,8 @@ end
 class Andy  < PhysicalActor
     
     include ControllableModule
+
+    JumpPower = 60
 
     state(:Controllable) {
         def do_controls(control_id = nil)
@@ -303,7 +297,7 @@ class Andy  < PhysicalActor
                 @y-=10
 
                 #set an upwards velocity
-                @init_y = 60
+                @init_y = JumpPower
             end
 
             return self
