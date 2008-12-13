@@ -8,8 +8,6 @@ end
 require 'gosu' 
 require 'common'
 
-
-
 #controls animations and images
 class ImageSystem
     
@@ -43,7 +41,6 @@ class ImageSystem
     def self.load_frames(filename,frame_width,frame_height)
         return Gosu::Image.load_tiles(@window,filename,frame_width,frame_height,false)
     end
-    
     
     def get_animation(anim_name)
         return @anim[anim_name].frames
@@ -114,9 +111,7 @@ class ImageSystem
                        end
             end
         end
-        
     end
-    
 end   
 
 # Manages group of animations usually associated with a game object
@@ -185,9 +180,7 @@ class MusicSystem
     end
     
     def load_song(file)        
-        
         return Gosu::Song.new(@window,file)    
-
     end
     
     def make_play_list(name,songs)    
@@ -207,7 +200,6 @@ class MusicSystem
     end
     
     def update
-        
         if(!@cur_list_name) then return; end
         
         cur_list = @play_list[@cur_list_name]
@@ -220,11 +212,7 @@ class MusicSystem
             @song_counter = (@song_counter + 1) % cur_list.size
             cur_list[@song_counter].play
         end
-        
     end     
-
- 
-    
 end   
 
 
@@ -242,12 +230,10 @@ class EffectsSystem
     def play_effect(key,vol=1)
         @effects[key].play(vol)
     end    
-    
 end
 
 #controls game physics
 class PhysicsController
-
     Grav = 9.81
     
     Time_tick = 0.2
@@ -276,7 +262,6 @@ class PhysicsController
         y_acc = 0
         
         @physors.each do |val|
-            
             #direction of vector  
             dx = val.x - actor.x
             dy = val.y - actor.y
@@ -302,7 +287,6 @@ class PhysicsController
             
             #alert physor there is an object within range
             if(length < 200 && v_mag > 3) then val.within_range(actor,v_mag); end
-            
         end
         
         y_acc += Grav # gravity
@@ -331,17 +315,15 @@ class PhysicsController
         actor.time += Time_tick
         
         [x, y]
-
     end
 
     def reset_physics(actor)
         actor.time = 0
     end
     
-    def do_grav
-        do_physics(false)
+    def do_grav(actor)
+        do_physics(actor, false)
     end
-    
 end
 
 
