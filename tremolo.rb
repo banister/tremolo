@@ -18,7 +18,7 @@ class MyWindow < Gosu::Window
     super(Common::SCREEN_X, Common::SCREEN_Y, false)
     self.caption = 'Tremolo'
     init_keyboard_constants
-    @game = GameController.new(self)   
+    @game = GameController.new(self)  
   end
    
   def update

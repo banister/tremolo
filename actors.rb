@@ -26,12 +26,7 @@ class Physor < Actor
             add_effect(:vortex,"assets/vortex.wav")
         end
 
-        img = case @mag < 0
-                when true
-                    "assets/repulsor.png"
-                when false
-                    "assets/sphere.png"
-                end
+        img = @mag < 0 ? "assets/repulsor.png" : "assets/sphere.png"
 
         setup_gfx do
             make_animation(:standard, load_image(img), :timing => 1)
@@ -61,16 +56,31 @@ class Physor < Actor
 
 
     def info
-        "Object information:\nType: #{self.class}; Magnitude: #{@mag}"
+        "#{super}; Magnitude: #{@mag}"
     end
+
+#     def update
+#         super
+#         TexPlay.leftshift @anim.update, 2, :loop 
+       
+#     end
 
     private :setup_sound, :setup_gfx
 end
 
 #Simple interactable object, just for testing purposes
 class SampleActor < Actor
+
+    state(:Idle) {
+        def do_collision(collider)
+        end
+    }
+    
     def setup
-        setup_gfx do
+        # destructor lambda...what is executed when the graphics runs out frames
+        destructor = lambda { remove_from_world(self) }
+        
+        setup_gfx(:destructor => destructor) do
             make_animation(:dying, load_frames("assets/lanternsmoke.png",20,18),:timing => 0.05,
                            :loop => false, :hold => false)
 
@@ -92,32 +102,13 @@ class SampleActor < Actor
         super
         @effects.play_effect(:puff)
         @anim.load_animation(:dying)
-        @idle = true
+        state :Idle
     end
 
     def update
         @hover = @hover + 0.1 % (2 * Math::PI)
         @dy = 2 * Math::sin(@hover)
         @y = @anchor + @dy
-    end
-
-    def draw(ox,oy)
-        #screen coords
-        sx = @x - ox
-        sy = @y - oy
-
-        #no more frames left? then must have expired
-        if !(image=@anim.update) then @expired = true; return; end
-
-        #is visible? if not, return (no point drawing)
-        return if !visible?(sx,sy)
-
-        #object must be active and visible, so draw it
-        image.draw_rot(sx, sy, Common::ZOrder::Actor, 0.0)
-    end
-
-    def info
-        "Object information:\nType: #{self.class}"
     end
 
     private :setup_sound, :setup_gfx
@@ -161,11 +152,11 @@ class Projectile  < PhysicalActor
             @effects.play_effect(:bullet)
         end
 
-        @expired = true
+        remove_from_world(self)
     end
 
     def info
-        "Object information:\nType: #{self.class}; Initial Velocity: #{Math::hypot(@init_x,@init_y)}; Congrats on clicking me ;)"
+        "#{super}; Initial Velocity: #{Math::hypot(@init_x,@init_y)}; Congrats on clicking me ;)"
     end
 
     private :check_collision, :setup_gfx, :setup_sound
@@ -175,8 +166,6 @@ end
 #Digger object
 class Digger  < PhysicalActor
     include Stateology
-
-    Grav_only = true
 
     state(:Digging) {
         def state_entry(tile)
@@ -221,7 +210,7 @@ class Digger  < PhysicalActor
         case collider
         when Projectile, Digger
             @effects.play_effect(:bullet)
-            @expired = true
+            remove_from_world(self)
         when Tile
             state Digging, collider
         end
@@ -240,14 +229,8 @@ class Digger  < PhysicalActor
         end
     end
 
-    def info
-        "Object information:\nType: #{self.class}"
-    end
-
     private :check_collision, :setup_gfx, :setup_sound
 end
-
-
 
 
 #Andy object
@@ -258,9 +241,12 @@ class Andy  < PhysicalActor
     JumpPower = 60
 
     state(:Controllable) {
+        def state_entry
+            # allow other forces
+            toggle_gravity_only
+        end
+        
         def do_controls(control_id = nil)
-            super()
-            
             #block-based control keys
             @controls.each_value { |val| if (yield val) then control_id = val; break; end}
 
@@ -290,6 +276,30 @@ class Andy  < PhysicalActor
 
             return self
         end
+
+        def ground_hug
+            prev = @y
+            if @init_y == 0 then
+
+                #why 12 ? cos this factor is perfect for climbing steep hills
+                #if > 12 unnecessary looping (expensive) if < 12 then can't climb steep hills
+                @y-=@height / 12
+                begin
+                    @y+=1
+
+                    #if ground is more than 30 pixels away then dont 'hug'; just fall instead
+                    if (@y - prev) > 30 then
+                        @y = prev
+                        break
+                    end
+                end until @env.check_collision(self, 0, @height / 2)
+            end
+        end
+
+        def state_exit
+            # only allow gravity
+            toggle_gravity_only
+        end
     }
 
     def setup
@@ -298,6 +308,7 @@ class Andy  < PhysicalActor
         end
 
         setup_controls
+        toggle_gravity_only
     end
 
     def setup_controls
@@ -335,26 +346,17 @@ class Andy  < PhysicalActor
     end
 
     def info
-        "Object information:\nType: #{self.class} @ (#{@x.to_i}, #{@y.to_i})"
+        "#{super} @ (#{@x.to_i}, #{@y.to_i})"
     end
 
     #ensure Andy follows curve of landscape
-    def ground_hug
-        prev = @y
-        if @init_y == 0 then
+    def ground_hug; end
 
-            #why 12 ? cos this factor is perfect for climbing steep hills
-            #if > 12 unnecessary looping (expensive) if < 12 then can't climb steep hills
-            @y-=@height / 12
-            begin
-                @y+=1
-
-                #if ground is more than 30 pixels away then dont 'hug'; just fall instead
-                if (@y - prev) > 30 then
-                    @y = prev
-                    break
-                end
-            end until @env.check_collision(self, 0, @height / 2)
+    def check_collision
+        check_actor_collision
+        
+        if(tile=@env.check_collision(self, 0, @height/2)) then
+            reset_physics
         end
     end
 

@@ -1,8 +1,6 @@
 begin
-    # In case you use Gosu via RubyGems.
     require 'rubygems'
 rescue LoadError
-    # In case you don't.
 end
 
 require 'gosu' 
@@ -15,8 +13,10 @@ class ImageSystem
     class Anim_struct
         attr_accessor :wait_time, :frames, :loop, :hold
     end
+
+    attr_accessor :facing
     
-    def initialize(window)
+    def initialize(window, facing=1)
         @window = window
         @animations = {}
         @frame_counter = 0
@@ -24,6 +24,7 @@ class ImageSystem
         @timer = 0
         @anim = {}
         @queue = []
+        @facing = facing || 1 
     end
     
     def load_image(filename)
@@ -31,14 +32,6 @@ class ImageSystem
     end
     
     def load_frames(filename,frame_width,frame_height)
-        return Gosu::Image.load_tiles(@window,filename,frame_width,frame_height,false)
-    end
-    
-    def self.load_image(filename)
-        return Gosu::Image.new(@window,filename)
-    end
-    
-    def self.load_frames(filename,frame_width,frame_height)
         return Gosu::Image.load_tiles(@window,filename,frame_width,frame_height,false)
     end
     
@@ -89,14 +82,14 @@ class ImageSystem
         if (Time.now.to_f - @timer.to_f) < wait_time then return @cur_anim.frames[@frame_counter]; end
         
         if @frame_counter < @cur_anim.frames.size - 1 && @cur_anim.loop == false then
-            @frame_counter+=1
+            @frame_counter += 1
             @timer = Time.now.to_f
             
             return @cur_anim.frames[@frame_counter]
             
         elsif @cur_anim.loop == true then
             @timer = Time.now.to_f        
-            @frame_counter = ( 1 + @frame_counter) % @cur_anim.frames.size
+            @frame_counter = (1 + @frame_counter) % @cur_anim.frames.size
             
             return @cur_anim.frames[@frame_counter]
         else
@@ -122,47 +115,88 @@ class AnimGroup
 
     # block is executed when animation is finished
     # block behaves a bit like a destructor
-    Anim = Struct.new(:x, :y, :anim, :zorder, :block)
+    Anim = Struct.new(:x, :y, :anim, :zorder, :x_offset, :y_offset, :block)
     
     def initialize
-        @group = []     
+        @group = {}     
     end
     
     def draw(ox,oy)
         
         # iterate and erase
-        @group.delete_if { |v|
+        @group.delete_if { |k, v|
             if nil == v.anim.update then
                 
                 # run the associated block now that animation has finished
                 v.block.call if v.block
                 true
             else 
-                misc_image = v.anim.update 
+                image = v.anim.update
+                facing = v.anim.facing == -1 ? -1 : 1
                 
-                next if !misc_image
+                next if !image
+
+                sx = coordinate(v.x) + v.x_offset - ox
+                sy = coordinate(v.y) + v.y_offset - oy
+
+                next if !visible?(sx, sy, image)
                 
-                misc_image.draw_rot(v.x - ox, v.y - oy, v.zorder, 0)
+                image.draw_rot(sx, sy, v.zorder, 0, 0.5, 0.5, facing)
                 false
             end
         }
     end
+
+    def coordinate(val)
+        
+        # Methods are dynamic coordinates
+        if val.respond_to?(:call) then
+            return val.call
+        else
+            return val
+        end
+    end
+
+    #check to see whether object is currently on screen
+    def visible?(sx,sy, img)
+        (sx + img.width / 2 > 0 && sx - img.width / 2 < Common::SCREEN_X && sy + img.height / 2 > 0 &&
+         sy - img.height / 2 < Common::SCREEN_Y)
+    end
     
-    def new_entry(*args, &block)
-        @group << Anim.new(*args)
-        
-        # if zorder parameter is NOT supplied then default
-        @group.last.zorder = Common::ZOrder::Actor if !args[3] 
-        
+    def new_entry(sym, hash_args, &block)
+        g = @group[sym] = Anim.new
+
+        g.x = hash_args[:x]
+        g.y = hash_args[:y]
+        g.anim = hash_args[:anim]
+        g.x_offset = hash_args[:x_offset] || 0
+        g.y_offset = hash_args[:y_offset] || 0
+        g.zorder = hash_args[:zorder] || Common::ZOrder::Actor
+
         # save the block
-        @group.last.block = block
+        @group[sym].block = block
         
-        @group.last
+        @group[sym].anim
     end
-    
-    def <<(anim)
-        @group << anim
+
+    def remove_entry(sym)
+        @group.delete(sym)
     end
+
+    def get_entry(sym)
+        @group[sym]
+    end
+
+    def get_anim(sym)
+        @group[sym].anim if @group[sym]
+    end
+
+    def modify_anim(sym, &block)
+        if @group[sym] then
+            @group[sym].anim.instance_eval(&block)
+        end
+    end
+    private :coordinate, :visible?
 end
 
 
@@ -188,7 +222,7 @@ class MusicSystem
     end
     
     def load_play_list(list_name)
-        if(!@play_list.has_key?(list_name)) then return nil; end
+        if !@play_list.has_key?(list_name) then return nil; end
         
         @song_counter = 0
         @cur_list_name = list_name
@@ -200,15 +234,15 @@ class MusicSystem
     end
     
     def update
-        if(!@cur_list_name) then return; end
+        if !@cur_list_name then return; end
         
         cur_list = @play_list[@cur_list_name]
-        if(cur_list[@song_counter].playing?) then return; end
+        if cur_list[@song_counter].playing? then return; end
         
-        if(@loop == false && @song_counter < (cur_list.size - 1)) then  #subtract 1 because size and max index are off by 1 
+        if @loop == false && @song_counter < (cur_list.size - 1) then  #subtract 1 because size and max index are off by 1 
             @song_counter+=1 
             cur_list[@song_counter].play
-        elsif(@loop == true) then
+        elsif @loop == true then
             @song_counter = (@song_counter + 1) % cur_list.size
             cur_list[@song_counter].play
         end
@@ -286,7 +320,7 @@ class PhysicsController
             v_mag = Math.hypot(x_incr,y_incr)
             
             #alert physor there is an object within range
-            if(length < 200 && v_mag > 3) then val.within_range(actor,v_mag); end
+            if length < 200 && v_mag > 3 then val.within_range(actor,v_mag); end
         end
         
         y_acc += Grav # gravity
@@ -326,5 +360,27 @@ class PhysicsController
     end
 end
 
+# Responsible for forwarding events
+# to a list of registered listeners
+class EventController
+    def initialize
+        @event_hash = {}
+    end
+
+    def register_listener(event_name, lsr)
+        @event_hash[event_name] ||= []
+        @event_hash[event_name] << lsr
+    end
+
+    def method_missing(event_name, *args, &block)
+        raise NoMethodError, "No method called #{event_name} registered." if !@event_hash.has_key?(event_name)
+
+        @event_hash[event_name].each { |lsr| lsr.send(event_name, *args, &block) }
+    end
+
+    def unregister_listener(event_name, lsr)
+        @event_hash[event_name].delete(lsr) if @event_hash[event_name]
+    end
+end
 
 

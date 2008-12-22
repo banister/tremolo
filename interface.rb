@@ -7,10 +7,11 @@ module InterfaceElementActor
     def left_mouse_click
         puts info
 
-        self.freeze = true
         state :Inactive
         
-        # keep track of most recently selected Actor
+        if last_clicked && last_clicked != self then
+            last_clicked.unclicked
+        end
         @@last_clicked = self
     end
 
@@ -19,12 +20,19 @@ module InterfaceElementActor
     end
 
     def left_mouse_released
-        self.freeze = false
         state nil
     end
 
+    def unclicked
+    end
+
     def self.clear_last_clicked
+        @@last_clicked.unclicked if @@last_clicked
         @@last_clicked = nil
+    end
+
+    def last_clicked=(lc)
+        @@last_clicked = lc
     end
 
     def last_clicked

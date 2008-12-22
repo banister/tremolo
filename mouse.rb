@@ -95,11 +95,11 @@ class MousePtr
                     @selec_obj.left_mouse_held(@x, @y)
 
 
-                #release object if it's expired
-                if @selec_obj.expired then
-                    @selec_obj = nil     
-                    @left_held = false
-                end
+      #           #release object if it's expired
+#                 if @selec_obj.expired then
+#                     @selec_obj = nil     
+#                     @left_held = false
+#                 end
 
             end
 
@@ -164,7 +164,7 @@ class MousePtr
     def selected
         things = []
         @world.each do |thing|
-            unless thing == self || thing.idle || thing.expired
+            unless thing == self 
                 if intersect?(thing) then
                         things.push(thing)
                 end

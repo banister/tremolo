@@ -44,24 +44,26 @@ class Actor
     include BoundingBox
     include InterfaceElementActor
 
+    # state where nothing happens except drawing updates
     state(:Inactive) { 
         def update
         end
     }
 
-    #each object can decide what this means: typically means object no longers moves of own volition if true
-    attr_accessor :freeze
-
-    #idle typically means the object is no longer interactive; expired means object should be erased from world
-    attr_reader :idle, :expired
+    # state where actor is unresponsive to other actors
+    state(:Idle) {
+        def do_collision(collider)
+        end
+    }
 
     #important to use width/height, so as not to use *_offset of boundingbox module, stay loosely coupled
     attr_reader :width, :height
 
     def initialize(hash_args)
-        check_args(hash_args, :window)
+        check_args(hash_args, :window, :world)
 
         @window = hash_args[:window]
+        @world = hash_args[:world]
         
         basic_setup(hash_args)
     end
@@ -70,12 +72,9 @@ class Actor
         
         #Objects are born alive and interactive and self-propelled
         @idle = false
-        @expired = false
-        @freeze = false
         @x, @y = 0
 
         @effects = EffectsSystem.new(@window)
-        @anim = ImageSystem.new(@window)
         @anim_group = AnimGroup.new
 
         if method(:setup).arity == 0 then
@@ -83,7 +82,6 @@ class Actor
         else
             setup(hash_args)
         end
-        
     end
 
     #must be implemented by subclasses 
@@ -93,24 +91,58 @@ class Actor
         @effects.instance_eval(&block)
     end
 
-    def setup_gfx(&block)
-        @anim.instance_eval(&block)
+    def setup_gfx(*hash_args, &block)
+        h = { :x => method(:x), :y => method(:y)}
 
-        image = @anim.get_animation(:standard).first
+        if hash_args.first.instance_of?(Hash) then
+            h.merge!(hash_args.first)
+
+            # get the destructor block for register_animation (if there is one)
+            d = h.delete(:destructor)
+        end
+
+        anim = register_animation(:self, h, &d) 
+
+        anim.instance_eval(&block)
+
+        image = anim.get_animation(:standard).first
         
         @width = image.width
         @height = image.height
-        set_bounding_box(@width,@height)
+        set_bounding_box(@width, @height)
 
-        @anim.load_animation(:standard)
+        anim.load_animation(:standard)
+        @anim = anim
     end
 
+    def register_animation(sym, hash_args, &block)
+        hash_args[:anim] = ImageSystem.new(@window, hash_args.delete(:facing))
+        
+        @anim_group.new_entry(sym, hash_args, &block)
+    end
+
+    def unregister_animation(sym)
+        @anim_group.remove_entry(sym)
+    end
+
+    def play_effect(sym)
+        @effects.play_effect(sym)
+    end
+
+    def add_to_world(obj)
+        @world.push obj
+    end
+
+    def remove_from_world(obj)
+        @world.delete obj
+    end
+    
     def check_actor_collision
         @world.each do |thing|
-            unless thing == self || thing.idle || thing.expired
+            unless thing == self 
                 if intersect?(thing) then
                         case thing
-                        when Player
+                        when Tank
 
                         else
                             self.do_collision(thing)
@@ -129,7 +161,7 @@ class Actor
     def check_bounds
         if @y > Common::SCREEN_Y * 3 || @y < -Common::SCREEN_Y || @x >Common::SCREEN_X * 3 || @x < -Common::SCREEN_X then
             puts "#{self.class} fell of the screen at (#{@x.to_i}, #{@y.to_i})"
-            @expired = true
+            remove_from_world(self)
         end 
     end
 
@@ -138,8 +170,8 @@ class Actor
         c_class = collider.class.to_s
 
         # choose An or A depending on whether class name begins with a vowel
-        article_one = s_class[0,1]=~/[aeiou]/i ? "An" : "A"
-        article_two = c_class[0,1]=~/[aeiou]/i ? "an" : "a"
+        article_one = s_class[0,1] =~ /[aeiou]/i ? "An" : "A"
+        article_two = c_class[0,1] =~ /[aeiou]/i ? "an" : "a"
     end
 
     def warp(x, y)
@@ -153,24 +185,19 @@ class Actor
     end
 
     def draw(ox,oy)
-
-        #screen coords
-        sx = @x - ox
-        sy = @y - oy
-
-        return if !visible?(sx,sy)
-
-        @anim.update.draw_rot(sx, sy, Common::ZOrder::Actor, 0)
+        @anim_group.draw(ox, oy)
     end        
 
     def update; end
 
-    def info; "Object information:\nActor.info: this method needs to be overridden."; end
+    def info
+        "Object information:\nType: #{self.class}"
+    end
 
     def check_args(hash_args, *args)
         raise ArgumentError, "not a hash" if !hash_args.instance_of?(Hash)
         if (hash_args.keys & args).size != args.size then
-            raise ArgumentError, "some required hash keys were missing"
+            raise ArgumentError, "some required hash keys were missing for #{self.class}"
         end
         nil
     end
@@ -208,9 +235,8 @@ class PhysicalActor < Actor
 
 
     def basic_setup(hash_args)
-        check_args(hash_args, :world, :phys, :env)
+        check_args(hash_args, :phys, :env)
 
-        @world = hash_args[:world]
         @phys = hash_args[:phys]
         @env = hash_args[:env]
 
@@ -223,6 +249,7 @@ class PhysicalActor < Actor
     end
 
     def reset_physics
+        @init_y = @init_x = 0
         @phys.reset_physics(self)
     end
 
@@ -247,11 +274,8 @@ class PhysicalActor < Actor
     end
 
     def check_tile_collision
-        
         if tile=@env.check_collision(self, 0, @height / 2) then
             reset_physics
-            @init_y = 0
-            @init_x = 0 
             self.do_collision(tile)
             tile.do_collision(self)
         end
@@ -282,20 +306,35 @@ end
 module ControllableModule
     include Stateology
 
+    def left_mouse_click
+        super
+
+        hover = 2 * Math::PI * rand
+        dy = 0
+        y_lambda = lambda do
+            hover = hover + 0.1 % (2 * Math::PI)
+            dy = 10 * Math::sin(hover)
+            method(:y).call + dy
+        end
+
+        new_anim = register_animation(:arrow, :x => method(:x), :y => y_lambda, :x_offset => 0, :y_offset => -80)
+
+        new_anim.make_animation(:arrow, new_anim.load_image("assets/arrow.png"), :timing => 1)
+
+        new_anim.load_animation(:arrow)
+    end
+
     def left_mouse_released
-        self.freeze = false
         state :Controllable
     end
 
-
     state(:Controllable) {
-        def do_controls
-            if(last_clicked != self) then
-                state nil
-                return
-            end
+
+        def unclicked
+            unregister_animation(:arrow)
+            state nil
         end
-        
+
     }
 
     def do_controls(*args, &block)
@@ -303,5 +342,7 @@ module ControllableModule
         #as we want no behaviour outside
         #of the Controllable state
     end
+
+    alias_method :button_down, :do_controls
 end
 #################### End ControllableModule ##################
