@@ -143,7 +143,7 @@ class Tank < Actor
     end
 
     def projectile_collided_with(thing, projec)
-        puts "Player's #{projec.class} collided with a #{thing.class}"
+        puts "#{self.class}'s #{projec.class} collided with a #{thing.class}"
 
         if thing.instance_of?(SampleActor) then @health += 5; end
     end

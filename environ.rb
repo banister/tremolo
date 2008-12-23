@@ -26,7 +26,6 @@ class EnvironmentController
         @screen_to_map = lambda { |x,y| [(x / @tile_size_x).to_i, ((y - 124)/@tile_size_y).to_i] }
 
         setup_themes
-
     end
 
     def setup_themes
@@ -78,7 +77,7 @@ class EnvironmentController
         #convert from screen to map coords
         map_x,map_y = *@screen_to_map.call(x,y)
 
-        if x<0 || y < 0 then return; end
+        if x < 0 || y < 0 then return; end
         if !@tiles[map_y] then return; end
 
         if @tiles[map_y][map_x] then
@@ -86,8 +85,6 @@ class EnvironmentController
 
         end
     end
-
-
 
     def check_collision(actor, offset_x=0, offset_y=0)
 
@@ -115,7 +112,7 @@ class EnvironmentController
         #draw the tiles
         @height.times do |y|
             @width.times do |x|
-                if(tile=@tiles[y][x]): tile.draw(x,y,ox,oy);end
+                if tile=@tiles[y][x] then tile.draw(x,y,ox,oy);end
             end
         end
     end
@@ -126,17 +123,18 @@ end
 class Tile
 
     include InterfaceElementTile
+    
     #class counter
     @@count_instance = 0
 
     #utility class
     Clr = Struct.new(:r,:g,:b,:a)
 
+    Radius_Dmg = 30
+
     attr_reader :x,:y
 
     #meaningless but necessary for consistent interface
-    attr_accessor :freeze
-
     def initialize(window,size_x,size_y,map_to_screen,screen_to_map,t_type,x,y, env)
         @@count_instance += 1
         @window = window
@@ -146,13 +144,9 @@ class Tile
         @map_to_screen = map_to_screen
         @screen_to_map = screen_to_map
         @t_type = t_type
-        @radius_dmg = 30
 
         #for misc animations associated with this tile
         @anim_group = AnimGroup.new
-
-        #probably meaningless for this class
-        @freeze = false
 
         @x,@y = @map_to_screen.call(x,y)
 
@@ -173,9 +167,9 @@ class Tile
         #get filename of tile image
         file = "assets/#{@theme}/#{@theme}#{@t_type}.png"
 
-        @image = Gosu::Image.new(@window,file)
+        @image = Gosu::Image.new(@window, file)
 
-        @blast = Gosu::Image.load_tiles(@window,"assets/blast.png",33,32,false)
+        @blast = Gosu::Image.load_tiles(@window,"assets/blast.png", 33, 32, false)
 
         @width = @image.width
         @height = @image.height
@@ -212,14 +206,10 @@ class Tile
 
     def check_collision(cp_x, cp_y)
 
-        #my_x,my_y=@map_to_screen.call(my_x,my_y)
-
         x = (cp_x - @x).to_i
         y = (cp_y - @y).to_i
 
-        if(TexPlay.get_pixel(@image, x, y)[3] !=0) then return self;  end
-
-
+        if TexPlay.get_pixel(@image, x, y)[3] !=0 then return self;  end
     end
 
     #override in base-class
@@ -237,28 +227,28 @@ class Tile
 
         damage_block = lambda do
             #splash damage for other tiles
-            tile = @env.get_tile(s.x + @radius_dmg, s.y)
+            tile = @env.get_tile(s.x + Radius_Dmg, s.y)
             if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
 
-            tile = @env.get_tile(s.x - @radius_dmg, s.y)
+            tile = @env.get_tile(s.x - Radius_Dmg, s.y)
             if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
 
-            tile = @env.get_tile(s.x, s.y  + @radius_dmg)
+            tile = @env.get_tile(s.x, s.y  + Radius_Dmg)
             if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
 
-            tile = @env.get_tile(s.x, s.y  - @radius_dmg)
+            tile = @env.get_tile(s.x, s.y  - Radius_Dmg)
             if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
 
-            tile = @env.get_tile(s.x - @radius_dmg, s.y  - @radius_dmg)
+            tile = @env.get_tile(s.x - Radius_Dmg, s.y  - Radius_Dmg)
             if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
 
-            tile = @env.get_tile(s.x + @radius_dmg, s.y  - @radius_dmg)
+            tile = @env.get_tile(s.x + Radius_Dmg, s.y  - Radius_Dmg)
             if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
 
-            tile = @env.get_tile(s.x - @radius_dmg, s.y  + @radius_dmg)
+            tile = @env.get_tile(s.x - Radius_Dmg, s.y  + Radius_Dmg)
             if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
 
-            tile = @env.get_tile(s.x + @radius_dmg, s.y  + @radius_dmg)
+            tile = @env.get_tile(s.x + Radius_Dmg, s.y  + Radius_Dmg)
             if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
 
 
@@ -270,11 +260,12 @@ class Tile
         when Projectile
             @effects.play_effect(:thud)
 
-            new_anim = @anim_group.new_entry(actor.x, actor.y, ImageSystem.new(@window), &damage_block)
+            new_anim = @anim_group.new_entry(:blast, :x => actor.x, :y => actor.y,
+                                             :anim => ImageSystem.new(@window), &damage_block)
 
-            new_anim.anim.make_animation(:blast,@blast,:timing => 0.06,:loop => false, :hold => false)
+            new_anim.make_animation(:blast, @blast,:timing => 0.06,:loop => false, :hold => false)
 
-            new_anim.anim.load_queue(:blast)
+            new_anim.load_queue(:blast)
         when Digger
             damage_block.call
         else
@@ -284,13 +275,11 @@ class Tile
     end
 
     def do_damage(x, y)
-        r = @radius_dmg
+        r = Radius_Dmg
         TexPlay.draw(@image) {
             color :alpha
-            circle x, y,r
+            circle x, y, r
         }
-
-
     end
 
     def info
