@@ -3,6 +3,7 @@ begin
 rescue LoadError
 end
 
+require 'utils'
 require 'gosu'
 require 'controllers'
 require 'actors'
@@ -12,7 +13,12 @@ require 'common'
 
 # Manages the game
 class GameController
+
+    GameState = Struct.new(:window, :world, :phys, :env, :ec)
+    
     def initialize(window)
+
+        @gs = GameState.new
         @window = window
         @jukebox = MusicSystem.new(@window)
         @anims = ImageSystem.new(@window)
@@ -20,6 +26,12 @@ class GameController
         @phys = PhysicsController.new
         @env = EnvironmentController.new(@window)
         @ec = EventController.new
+
+        @gs.window = @window
+        @gs.world = @world
+        @gs.phys = @phys
+        @gs.env = @env
+        @gs.ec = @ec
 
         setup_interface
         setup_world
@@ -52,42 +64,40 @@ class GameController
         #sample actors
         num_Sample_Actors = 5
         num_Physors = 2
-        num_Diggers = 5
-        num_Andys = 2
+        num_Diggers = 2
+        num_Andys = 5
         num_Tanks = 0
 
         puts "creating #{num_Sample_Actors} SampleActors..."
         num_Sample_Actors.times  {
-            @world.push SampleActor.new(:window => @window, :world => @world)
+            @world.push SampleActor.new(:game_state => @gs)
         }
 
         puts "creating #{num_Diggers} Diggers..."
         num_Diggers.times {
-            @world.push Digger.new(:window => @window, :world => @world, :phys => @phys, :env => @env)
+            @world.push Digger.new(:game_state => @gs)
         }
         
         num_Physors.times {
             mag = rand(40) - 20
-            @world.push Physor.new(:window => @window, :world => @world, :phys => @phys, :mag => mag)
+            @world.push Physor.new(:game_state => @gs, :mag => mag)
             puts "creating Physor of mag #{mag}..."
         }
 
         puts "creating #{num_Andys} Andys..."
         num_Andys.times {
-            @world.push Andy.new(:window => @window, :world => @world, :phys => @phys, :env => @env)
+            @world.push Andy.new(:game_state => @gs)
         }
 
         puts "creating #{num_Tanks/2.to_i} RedTanks..."
         (num_Tanks / 2).to_i.times {
-            @world.push r=RedTank.new(:window => @window, :world => @world,
-                                    :phys => @phys, :env => @env, :facing => 1)
+            @world.push r=RedTank.new(:game_state => @gs, :facing => 1)
             @ec.register_listener(:button_down, r)
         }
 
         puts "creating #{num_Tanks/2.to_i} GrayTanks..."
         (num_Tanks / 2).to_i.times {
-            @world.push g=GrayTank.new(:window => @window, :world => @world,
-                                       :phys => @phys, :env => @env, :facing => -1)
+            @world.push g=GrayTank.new(:game_state => @gs, :facing => -1)
             @ec.register_listener(:button_down, g)
         }
 
@@ -95,11 +105,9 @@ class GameController
         @world.each { |thing| thing.warp(rand(2924), rand(500)) }
 
         #bring tanks into the world
-        @world.push r=RedTank.new(:window => @window, :world => @world,
-                                :phys => @phys, :env => @env, :facing => 1)
+        @world.push r=RedTank.new(:game_state => @gs, :facing => 1)
 
-        @world.push g=GrayTank.new(:window => @window, :world => @world,
-                                 :phys => @phys, :env => @env, :facing => -1)
+        @world.push g=GrayTank.new(:game_state => @gs, :facing => -1)
 
         r.warp(110, 515)
         g.warp(1980, 464)

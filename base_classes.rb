@@ -1,8 +1,6 @@
 begin
-    # In cAse you use Gosu via RubyGems.
     require 'rubygems'
 rescue LoadError
-    # In case you don't.
 end
 
 require 'gosu'
@@ -60,22 +58,30 @@ class Actor
     attr_reader :width, :height
 
     def initialize(hash_args)
-        check_args(hash_args, :window, :world)
+        check_args(hash_args, :game_state)
 
-        @window = hash_args[:window]
-        @world = hash_args[:world]
-        
-        basic_setup(hash_args)
+        @gs = hash_args[:game_state]
+        @window = @gs.window
+        @world = @gs.world
+        @phys = @gs.phys
+        @env = @gs.env
+        @ec = @gs.ec
+
+        if method(:basic_setup).arity == 0 then
+            basic_setup
+        else
+            basic_setup(hash_args)
+        end
     end
 
     def basic_setup(hash_args)
         
         #Objects are born alive and interactive and self-propelled
-        @idle = false
         @x, @y = 0
 
         @effects = EffectsSystem.new(@window)
         @anim_group = AnimGroup.new
+        @timers = TimerSystem.new
 
         if method(:setup).arity == 0 then
             setup
@@ -125,6 +131,22 @@ class Actor
         @anim_group.remove_entry(sym)
     end
 
+    def animation_registered?(sym)
+        @anim_group.has_entry?(sym)
+    end
+
+    def register_timer(*args)
+        @timers.register_timer(*args)
+    end
+
+    def unregister_timer(*args)
+        @timers.unregister_timer(*args)
+    end
+
+    def timer_update
+        @timers.update
+    end
+
     def play_effect(sym)
         @effects.play_effect(sym)
     end
@@ -152,6 +174,25 @@ class Actor
             end
         end
     end
+
+    def check_tile_collision
+        if tile=@env.check_collision(self, 0, @height / 2) then
+            self.do_collision(tile)
+            tile.do_collision(self)
+        end
+    end
+
+
+    def actor_collision_with?(a)
+        @world.each do |thing|
+            unless thing == self 
+                if intersect?(thing) then
+                    return true if thing == a
+                end
+            end
+        end
+        false
+    end
     
 
     def check_collision
@@ -178,7 +219,8 @@ class Actor
         @x, @y = x,y
     end
 
-    #check to see whether object is currently on screen
+    # check to see whether object is currently on screen,
+    # **SHOULD BE DEPRECATED SOON AS FUNCTIONALITY BEING MOVED TO AnimGroup Class**
     def visible?(sx,sy)
         (sx + @width / 2 > 0 && sx - @width / 2 < Common::SCREEN_X && sy + @height / 2 > 0 &&
          sy - @height / 2 < Common::SCREEN_Y)
@@ -202,6 +244,14 @@ class Actor
         nil
     end
 
+    def toggle_idle
+        if state == nil then
+            state :Idle
+        elsif state == :Idle
+            state nil
+        end
+    end
+
     def physical?
         false
     end
@@ -210,19 +260,80 @@ class Actor
 end
 ######################## End Actor ###########################
 
+class VehicleActor < Actor
+    include InterfaceElementVehicle
 
+    NumberOfSeats = 3
+    
+    def basic_setup(hash_args)
+        @drivers = []
 
+        super
+    end
 
+    def add_driver(driver)
+        if @drivers.size < NumberOfSeats
+            @drivers.push driver
+
+            return driver
+        end
+        nil
+    end
+
+    def driver_count
+        @drivers.size
+    end
+
+    def has_driver?
+        !@drivers.empty?
+    end
+
+    def drivers
+        @drivers
+    end
+
+    def do_collision(collider)
+        super
+
+        if collider.kind_of?(Andy) && last_clicked?(collider) then
+            if !animation_registered?(:vehicle_arrow) then
+                create_vehicle_arrow
+            end
+            
+            register_timer(:vehicle_arrow_timeout, :time_out => 0.1,
+                           :repeat => false,
+                           :action => lambda { unregister_animation(:vehicle_arrow) }) 
+        end
+    end
+
+    def create_vehicle_arrow
+        hover = 2 * Math::PI * rand
+        dy = 0
+        y_float = lambda do
+            hover = hover + 0.1 % (2 * Math::PI)
+            dy = 10 * Math::sin(hover)
+            method(:y).call + dy
+        end
+        
+        new_anim = register_animation(:vehicle_arrow, :x => method(:x), :y => y_float, :x_offset => 0,
+                                      :y_offset => -80)
+
+        new_anim.make_animation(:standard, new_anim.load_image("assets/arrowb.png"), :timing => 1)
+
+        new_anim.load_animation(:standard)
+    end
+end
 
 
 # Basic functionality for Actors that respond to Physics
-class PhysicalActor < Actor
-
+module Physical 
+    include Stateology
 
     state(:Inactive) {
         def update
             check_collision
             @phys.get_field(self)
+            timer_update
         end
 
         def check_collision
@@ -233,19 +344,11 @@ class PhysicalActor < Actor
     attr_accessor :time, :init_x, :init_y
     attr_reader :phys_info
 
-
-    def basic_setup(hash_args)
-        check_args(hash_args, :phys, :env)
-
-        @phys = hash_args[:phys]
-        @env = hash_args[:env]
-
-        @time = @init_x = @init_y = @x = @y = 0
+    def init_physics
+        @time = @init_x = @init_y = 0
         @phys_info = { }
         @phys_info[:physical] = true
         @phys_info[:gravity_only] = false
-
-        super
     end
 
     def reset_physics
@@ -287,11 +390,11 @@ class PhysicalActor < Actor
         check_tile_collision
     end
 
-
     def update
         check_collision
         @x, @y = do_physics
         check_bounds
+        timer_update
     end
 
     private :reset_physics, :do_physics, :toggle_gravity_only, :toggle_physics, :gravity_only?
@@ -303,21 +406,29 @@ end
 
 
 # module for Actors that can be controlled by keyboard
+# ASSUMPTIONS: host must have included InterfaceElementActor
 module ControllableModule
     include Stateology
+
+    # users must fill in this state
+    # with their own do_controls() method
+    def unclicked
+        unregister_animation(:arrow)
+        state nil
+    end
 
     def left_mouse_click
         super
 
         hover = 2 * Math::PI * rand
         dy = 0
-        y_lambda = lambda do
+        y_float = lambda do
             hover = hover + 0.1 % (2 * Math::PI)
             dy = 10 * Math::sin(hover)
             method(:y).call + dy
         end
 
-        new_anim = register_animation(:arrow, :x => method(:x), :y => y_lambda, :x_offset => 0, :y_offset => -80)
+        new_anim = register_animation(:arrow, :x => method(:x), :y => y_float, :x_offset => 0, :y_offset => -80)
 
         new_anim.make_animation(:arrow, new_anim.load_image("assets/arrow.png"), :timing => 1)
 
@@ -325,17 +436,8 @@ module ControllableModule
     end
 
     def left_mouse_released
-        state :Controllable
+        state :Controllable 
     end
-
-    state(:Controllable) {
-
-        def unclicked
-            unregister_animation(:arrow)
-            state nil
-        end
-
-    }
 
     def do_controls(*args, &block)
         #this should be left empty
@@ -346,3 +448,18 @@ module ControllableModule
     alias_method :button_down, :do_controls
 end
 #################### End ControllableModule ##################
+
+
+# Vehicles have slightly different behaviour - only controllable when
+# they possess a driver
+module ControllableVehicleModule
+    include ControllableModule
+
+    def left_mouse_released
+        if has_driver? then
+            state :Controllable
+        else
+            state nil
+        end
+    end
+end

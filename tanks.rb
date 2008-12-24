@@ -11,9 +11,9 @@ require 'common'
 
 
 #Interactive player object
-class Tank < Actor
+class Tank < VehicleActor
 
-    include ControllableModule
+    include ControllableVehicleModule
 
     Health_init = 100
     Velocity_init = 50
@@ -51,10 +51,6 @@ class Tank < Actor
     }
 
     def setup_vars(hash_args)
-        check_args(hash_args, :phys, :env)
-
-        @phys = hash_args[:phys]
-        @env = hash_args[:env]
         @facing = hash_args[:facing] || 1
         
         @angle = @facing == -1 ? 180 : 0
@@ -84,9 +80,9 @@ class Tank < Actor
         x1 = @facing * @turret.x + @turret.length * Math::cos((@angle / 360.0) * (2 * Math::PI))
         y1 = @turret.y + @turret.length * Math::sin(@angle / 360 * (2 * Math::PI))
         
-        new_ball = Projectile.new(:window => @window ,:x => @x + x1, :y =>  @y + y1,
-                                  :angle => 360 - @angle, :velocity => @velocity, :owner => self,
-                                  :world => @world, :phys => @phys, :env => @env)
+        new_ball = Projectile.new(:game_state => @gs, :x => @x + x1, :y =>  @y + y1,
+                                  :angle => 360 - @angle, :velocity => @velocity, :owner => self)
+                                  
         
         # change turret animation
         @turret.anim.load_queue(:fire, :standard)
@@ -101,6 +97,7 @@ class Tank < Actor
     def update
         do_controls { |val| @window.button_down? val}
         check_collision
+        @timers.update
     end
 
     def check_collision
@@ -179,7 +176,7 @@ class Tank < Actor
     end
 
     def info
-        "#{super}; Health: #{@health}"
+        "#{super}; Health: #{@health}; Drivers: #{driver_count}"
     end
 
     def facing
@@ -217,8 +214,8 @@ class RedTank < Tank
     end
 
     def setup_controls
-        @controls =  {:right => Gosu::KbD, :left => Gosu::KbA,
-            :vel_incr => Gosu::KbW, :vel_decr => Gosu::KbS,
+        @controls =  {:right => Gosu::Button::KbRight, :left => Gosu::Button::KbLeft,
+            :vel_incr => Gosu::Button::KbUp, :vel_decr => Gosu::Button::KbDown,
             :shoot_button => Gosu::Button::KbSpace}
     end
 end
@@ -251,6 +248,6 @@ class GrayTank < Tank
     def setup_controls
         @controls =  {:right => Gosu::Button::KbRight, :left => Gosu::Button::KbLeft,
             :vel_incr => Gosu::Button::KbUp, :vel_decr => Gosu::Button::KbDown,
-            :shoot_button => Gosu::Button::KbEnter}
+            :shoot_button => Gosu::Button::KbSpace}
     end
 end

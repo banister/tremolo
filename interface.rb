@@ -38,7 +38,28 @@ module InterfaceElementActor
     def last_clicked
         @@last_clicked
     end
+
+    def last_clicked?(lc)
+        @@last_clicked == lc
+    end
 end
+
+module InterfaceElementVehicle
+    include InterfaceElementActor
+    
+    def left_mouse_click
+        puts info
+
+        if actor_collision_with?(last_clicked) && last_clicked.kind_of?(Andy) then
+            if add_driver(last_clicked) then
+                last_clicked.entered_vehicle(self)
+            end
+        end
+
+        super
+    end
+end
+
 
 module InterfaceElementTile
     def left_mouse_click

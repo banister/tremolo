@@ -179,6 +179,10 @@ class AnimGroup
         @group[sym].anim
     end
 
+    def has_entry?(sym)
+        @group.has_key?(sym)
+    end
+
     def remove_entry(sym)
         @group.delete(sym)
     end
@@ -197,6 +201,45 @@ class AnimGroup
         end
     end
     private :coordinate, :visible?
+end
+
+
+#timer controller
+class TimerSystem
+
+    include HashArgsModule
+
+    TimerStruct = Struct.new(:start_time, :time_out, :action, :repeat)
+
+    def initialize
+        @timers = {}
+    end
+
+    def register_timer(sym, *hash_args)
+        hash_args = check_args(hash_args, :time_out, :action)
+        
+        @timers[sym] ||= TimerStruct.new
+
+        @timers[sym].start_time = Time.now.to_f
+        @timers[sym].time_out = hash_args[:time_out]
+        @timers[sym].action = hash_args[:action]
+        @timers[sym].repeat = hash_args[:repeat] || false
+    end
+
+    def update
+        @timers.delete_if do |key, val|
+            if (Time.now.to_f - val.start_time) >= val.time_out then
+                val.action.call
+            
+                return !val.repeat
+            end
+            false
+        end
+    end
+
+    def unregister_timer(sym)
+        @timers.delete(sym)
+    end
 end
 
 

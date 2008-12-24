@@ -34,10 +34,9 @@ class Physor < Actor
     end
     
     def setup_vars(hash_args)
-        check_args(hash_args, :mag, :phys)
+        check_args(hash_args, :mag)
         
         @mag = hash_args[:mag]
-        @phys = hash_args[:phys]
         
         @phys.set_physor(self)
     end
@@ -115,7 +114,9 @@ class SampleActor < Actor
 end
 
 #Weaponry  object
-class Projectile  < PhysicalActor
+class Projectile  < Actor
+
+    include Physical
 
     def setup(hash_args)
         setup_vars(hash_args)
@@ -131,7 +132,9 @@ class Projectile  < PhysicalActor
 
     def setup_vars(hash_args)
         check_args(hash_args, :x, :y, :angle, :velocity, :owner)
-        
+
+        init_physics
+
         @x = hash_args[:x]
         @y = hash_args[:y]
         @owner = hash_args[:owner]
@@ -164,8 +167,9 @@ end
 
 
 #Digger object
-class Digger  < PhysicalActor
+class Digger  < VehicleActor
     include Stateology
+    include Physical
 
     state(:Digging) {
         def state_entry(tile)
@@ -201,6 +205,7 @@ class Digger  < PhysicalActor
             add_effect(:drill,"assets/quake.ogg")
         end
 
+        init_physics
         toggle_gravity_only
     end
 
@@ -212,7 +217,11 @@ class Digger  < PhysicalActor
             @effects.play_effect(:bullet)
             remove_from_world(self)
         when Tile
-            state Digging, collider
+            if has_driver?
+                state Digging, collider
+            else
+                reset_physics
+            end
         end
     end
 
@@ -229,13 +238,17 @@ class Digger  < PhysicalActor
         end
     end
 
+    def info
+        "#{super}; Drivers: #{driver_count}"
+    end
     private :check_collision, :setup_gfx, :setup_sound
 end
 
 
 #Andy object
-class Andy  < PhysicalActor
-    
+class Andy  < Actor
+
+    include Physical
     include ControllableModule
 
     JumpPower = 60
@@ -308,6 +321,7 @@ class Andy  < PhysicalActor
         end
 
         setup_controls
+        init_physics
         toggle_gravity_only
     end
 
@@ -324,25 +338,27 @@ class Andy  < PhysicalActor
     end
 
     def apply_physics
+
         new_x, new_y = do_physics
         
         #if collide with tile on way up then begin descent immediately
         if @env.check_collision(self, 0, -@height/2) then @init_y = 0 end
-
+        
         #determine direction of new coords
         x_direc = new_x > @x ? 1 : -1
         y_direc = new_y > @y ? 1 : -1
-
+        
         #don't apply horizontal physics if obstructions to the left or right
-        if !@env.check_collision(self, x_direc * @width/2, 0)  then
+        if !@env.check_collision(self, x_direc * @width/2, 0) then
             @x = new_x
-            ground_hug 
+            ground_hug
         end
-
+        
         #dont apply vertical physics if obstructions above or below
         if !@env.check_collision(self, 0, y_direc * @height/2) then
             @y = new_y
         end
+
     end
 
     def info
@@ -358,6 +374,11 @@ class Andy  < PhysicalActor
         if(tile=@env.check_collision(self, 0, @height/2)) then
             reset_physics
         end
+    end
+
+    def entered_vehicle(vehicle)
+        # we entered a vehicle so we're no longer "in the world"
+        remove_from_world(self)
     end
 
     private :check_collision, :setup_gfx, :setup_sound
