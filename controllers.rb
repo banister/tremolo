@@ -226,6 +226,10 @@ class TimerSystem
         @timers[sym].repeat = hash_args[:repeat] || false
     end
 
+    def touch(sym)
+        @timers[sym].start_time = Time.now.to_f
+    end
+
     def update
         @timers.delete_if do |key, val|
             if (Time.now.to_f - val.start_time) >= val.time_out then
@@ -235,6 +239,10 @@ class TimerSystem
             end
             false
         end
+    end
+
+    def exist?(sym)
+        !!@timers[sym]
     end
 
     def unregister_timer(sym)

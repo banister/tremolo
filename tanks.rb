@@ -51,6 +51,11 @@ class Tank < VehicleActor
     }
 
     def setup_vars(hash_args)
+
+        #this shouldn't really be in here but can't
+        #find the right place for it at the moment
+        register_listener(:button_down)
+
         @facing = hash_args[:facing] || 1
         
         @angle = @facing == -1 ? 180 : 0
@@ -83,7 +88,6 @@ class Tank < VehicleActor
         new_ball = Projectile.new(:game_state => @gs, :x => @x + x1, :y =>  @y + y1,
                                   :angle => 360 - @angle, :velocity => @velocity, :owner => self)
                                   
-        
         # change turret animation
         @turret.anim.load_queue(:fire, :standard)
 

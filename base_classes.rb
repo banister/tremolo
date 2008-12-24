@@ -121,6 +121,10 @@ class Actor
         @anim = anim
     end
 
+    def register_listener(event)
+        @ec.register_listener(event, self)
+    end
+
     def register_animation(sym, hash_args, &block)
         hash_args[:anim] = ImageSystem.new(@window, hash_args.delete(:facing))
         
@@ -145,6 +149,14 @@ class Actor
 
     def timer_update
         @timers.update
+    end
+
+    def timer_exist?(sym)
+        @timers.exist?(sym)
+    end
+
+    def timer_touch(sym)
+        @timers.touch(sym)
     end
 
     def play_effect(sym)
@@ -299,10 +311,15 @@ class VehicleActor < Actor
             if !animation_registered?(:vehicle_arrow) then
                 create_vehicle_arrow
             end
-            
-            register_timer(:vehicle_arrow_timeout, :time_out => 0.1,
-                           :repeat => false,
-                           :action => lambda { unregister_animation(:vehicle_arrow) }) 
+
+            if timer_exist?(:vehicle_arrow_timeout) then
+                timer_touch(:vehicle_arrow_timeout)
+
+            else
+                register_timer(:vehicle_arrow_timeout, :time_out => 0.1,
+                               :repeat => false,
+                               :action => lambda { unregister_animation(:vehicle_arrow) })
+            end
         end
     end
 
@@ -314,9 +331,9 @@ class VehicleActor < Actor
             dy = 10 * Math::sin(hover)
             method(:y).call + dy
         end
-        
+
         new_anim = register_animation(:vehicle_arrow, :x => method(:x), :y => y_float, :x_offset => 0,
-                                      :y_offset => -80)
+                                      :y_offset => -80, :zorder => Common::ZOrder::Interface)
 
         new_anim.make_animation(:standard, new_anim.load_image("assets/arrowb.png"), :timing => 1)
 
@@ -428,11 +445,12 @@ module ControllableModule
             method(:y).call + dy
         end
 
-        new_anim = register_animation(:arrow, :x => method(:x), :y => y_float, :x_offset => 0, :y_offset => -80)
+        new_anim = register_animation(:arrow, :x => method(:x), :y => y_float, :x_offset => 0, :y_offset => -80,
+                                      :zorder => Common::ZOrder::Interface)
 
-        new_anim.make_animation(:arrow, new_anim.load_image("assets/arrow.png"), :timing => 1)
+        new_anim.make_animation(:standard, new_anim.load_image("assets/arrow.png"), :timing => 1)
 
-        new_anim.load_animation(:arrow)
+        new_anim.load_animation(:standard)
     end
 
     def left_mouse_released

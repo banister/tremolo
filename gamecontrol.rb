@@ -65,7 +65,7 @@ class GameController
         num_Sample_Actors = 5
         num_Physors = 2
         num_Diggers = 2
-        num_Andys = 5
+        num_Andys = 3
         num_Tanks = 0
 
         puts "creating #{num_Sample_Actors} SampleActors..."
@@ -111,9 +111,6 @@ class GameController
 
         r.warp(110, 515)
         g.warp(1980, 464)
-
-        @ec.register_listener(:button_down, r)
-        @ec.register_listener(:button_down, g)
 
         #setting up environment
         @env.load_env("desert1")
