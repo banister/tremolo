@@ -76,6 +76,21 @@ module InterfaceElementControllable
     def left_mouse_click
         super
 
+        create_arrow
+    end
+
+    def left_mouse_released
+        state :Controllable 
+    end
+
+
+    def do_controls(*args, &block)
+        #this should be left empty
+        #as we want no behaviour outside
+        #of the Controllable state
+    end
+
+    def create_arrow
         hover = 2 * Math::PI * rand
         dy = 0
         y_float = lambda do
@@ -92,15 +107,6 @@ module InterfaceElementControllable
         new_anim.load_animation(:standard)
     end
 
-    def left_mouse_released
-        state :Controllable 
-    end
-
-    def do_controls(*args, &block)
-        #this should be left empty
-        #as we want no behaviour outside
-        #of the Controllable state
-    end
 
     alias_method :button_down, :do_controls
 end
