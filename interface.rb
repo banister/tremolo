@@ -1,6 +1,9 @@
 require 'rubygems'
 require 'stateology'
 
+# behaviours for mouse interface
+
+# basic interace for Actors
 module InterfaceElementActor
     @@last_clicked = nil
     
@@ -44,11 +47,12 @@ module InterfaceElementActor
     end
 end
 
+
+# interface for Actors that are Vehicles
 module InterfaceElementVehicle
     include InterfaceElementActor
     
     def left_mouse_click
-        puts info
 
         if  last_clicked.kind_of?(Andy) && actor_collision_with?(last_clicked) then
             if add_driver(last_clicked) then
@@ -60,7 +64,64 @@ module InterfaceElementVehicle
     end
 end
 
+# interface for Actors that can be controlled by keyboard
+module InterfaceElementControllable
+    include InterfaceElementActor
+    
+    def unclicked
+        unregister_animation(:arrow)
+        state nil
+    end
 
+    def left_mouse_click
+        super
+
+        hover = 2 * Math::PI * rand
+        dy = 0
+        y_float = lambda do
+            hover = hover + 0.1 % (2 * Math::PI)
+            dy = 10 * Math::sin(hover)
+            method(:y).call + dy
+        end
+
+        new_anim = register_animation(:arrow, :x => method(:x), :y => y_float, :x_offset => 0, :y_offset => -80,
+                                      :zorder => Common::ZOrder::Interface)
+
+        new_anim.make_animation(:standard, new_anim.load_image("assets/arrow.png"), :timing => 1)
+
+        new_anim.load_animation(:standard)
+    end
+
+    def left_mouse_released
+        state :Controllable 
+    end
+
+    def do_controls(*args, &block)
+        #this should be left empty
+        #as we want no behaviour outside
+        #of the Controllable state
+    end
+
+    alias_method :button_down, :do_controls
+end
+#################### End InterfaceElementControllable ##################
+
+
+# interface for Actors that are both Vehicles and Controllable
+module InterfaceElementControllableVehicle
+    include InterfaceElementControllable
+    include InterfaceElementVehicle
+
+    def left_mouse_released
+        if has_driver? then
+            state :Controllable
+        else
+            state nil
+        end
+    end
+end
+
+# interface for Tiles
 module InterfaceElementTile
     def left_mouse_click
         puts info

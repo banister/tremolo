@@ -70,11 +70,6 @@ end
 #Simple interactable object, just for testing purposes
 class SampleActor < Actor
 
-    state(:Idle) {
-        def do_collision(collider)
-        end
-    }
-    
     def setup
         # destructor lambda...what is executed when the graphics runs out frames
         destructor = lambda { remove_from_world(self) }
@@ -249,7 +244,7 @@ end
 class Andy  < Actor
 
     include Physical
-    include ControllableModule
+    include InterfaceElementControllable
 
     JumpPower = 60
 
@@ -378,6 +373,8 @@ class Andy  < Actor
 
     def entered_vehicle(vehicle)
         # we entered a vehicle so we're no longer "in the world"
+        state :Inactive
+        toggle_physics
         remove_from_world(self)
     end
 

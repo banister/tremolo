@@ -13,7 +13,7 @@ require 'common'
 #Interactive player object
 class Tank < VehicleActor
 
-    include ControllableVehicleModule
+    include InterfaceElementControllableVehicle
 
     Health_init = 100
     Velocity_init = 50

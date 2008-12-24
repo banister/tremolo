@@ -343,6 +343,10 @@ class PhysicsController
     end
     
     def get_field(actor)
+        if !actor.phys_info[:physical] then
+            return [actor.x, actor.y]
+        end
+        
         x_acc = 0
         y_acc = 0
         

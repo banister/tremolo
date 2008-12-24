@@ -429,6 +429,7 @@ module ControllableModule
 
     # users must fill in this state
     # with their own do_controls() method
+    
     def unclicked
         unregister_animation(:arrow)
         state nil

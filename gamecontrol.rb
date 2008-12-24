@@ -65,7 +65,7 @@ class GameController
         num_Sample_Actors = 5
         num_Physors = 2
         num_Diggers = 2
-        num_Andys = 3
+        num_Andys = 5
         num_Tanks = 0
 
         puts "creating #{num_Sample_Actors} SampleActors..."
