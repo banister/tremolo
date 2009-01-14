@@ -64,8 +64,8 @@ class EnvironmentController
             Array.new(@width) do |x|
                 t_type = lines[y][x, 1].to_i
               #  if t_type != 0 then
-                        @tile_theme[theme.to_sym].new(@window, @tile_size_x, @tile_size_y, @map_to_screen,
-                                                      @screen_to_map, t_type, x ,y, self)
+                @tile_theme[theme.to_sym].new(@window, @tile_size_x, @tile_size_y, @map_to_screen,
+                                              @screen_to_map, t_type, x ,y, self)
               #  end
 
             end
@@ -104,18 +104,6 @@ class EnvironmentController
         end
     end
 
-    def remove_actor(actor)
-        @c_list.delete(actor)
-    end
-        
-    def add_actor(actor)
-        @c_list << actor
-    end
-
-    def collision_list
-        @c_list
-    end
-
     def draw(ox,oy)
 
         #draw the background
@@ -147,7 +135,7 @@ class Tile
     attr_reader :x,:y
 
     #meaningless but necessary for consistent interface
-    def initialize(window,size_x,size_y,map_to_screen,screen_to_map,t_type,x,y, env)
+    def initialize(window, size_x, size_y, map_to_screen, screen_to_map, t_type, x, y, env)
         @@count_instance += 1
         @window = window
         @env = env
@@ -160,9 +148,9 @@ class Tile
         #for misc animations associated with this tile
         @anim_group = AnimGroup.new
 
-        @x,@y = @map_to_screen.call(x,y)
+        @x, @y = @map_to_screen.call(x,y)
 
-        #list of Actors within boundaries of this tile
+        #list of Actors within boundaries of this tile (collision list)
         @c_list = []
 
         puts "loading tile #{@@count_instance}.."
@@ -285,7 +273,7 @@ class Tile
 
             #damage for this tile
             do_damage(vx, vy)
-        end
+       end
 
         case actor
         when Projectile

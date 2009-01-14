@@ -49,7 +49,7 @@ class Physor < Actor
     end
 
     def do_collision(collider)
-        puts "A #{self.class} of mag #{self.mag} collided with a #{collider.class}"
+        #puts "A #{self.class} of mag #{self.mag} collided with a #{collider.class}"
         if Projectile === collider then @effects.play_effect(:vortex); end
     end
 

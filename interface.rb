@@ -129,23 +129,19 @@ end
 module InterfaceElementTile
     def left_mouse_click
         puts info
-        puts "for tile"
     end
 
     def left_mouse_held(mx, my)
-        puts "click on tile @ #{mx - self.x} & #{my - self.y} for tile"
-
         xp = mx - self.x
         yp = my - self.y
+
         TexPlay.draw(@image) {
             color :random
             circle xp, yp, 10
         }
-        puts "should be drawing a colored circle!"
     end
 
     def left_mouse_released
-        "left mouse released for tile"
     end    
 end
 
