@@ -102,7 +102,7 @@ class SampleActor < Actor
     def update
         @hover = @hover + 0.1 % (2 * Math::PI)
         @dy = 2 * Math::sin(@hover)
-        @y = @anchor + @dy
+        self.y = @anchor + @dy
     end
 
     private :setup_sound, :setup_gfx
@@ -130,8 +130,8 @@ class Projectile  < Actor
 
         init_physics
 
-        @x = hash_args[:x]
-        @y = hash_args[:y]
+        self.x = hash_args[:x]
+        self.y = hash_args[:y]
         @owner = hash_args[:owner]
 
         angle = hash_args[:angle]
@@ -169,8 +169,8 @@ class Digger  < VehicleActor
     state(:Digging) {
         def state_entry(tile)
             @timer = Time.now.to_f
-            @cur_tile = tile
-            @anchor_y = @y
+            @collide_tile = tile
+            @anchor_y = self.y
         end
 
         def update
@@ -178,14 +178,14 @@ class Digger  < VehicleActor
                 state nil
             end
 
-            @y = @anchor_y + rand(4)
+            self.y = @anchor_y + rand(4)
 
             collide_sound
         end
 
         def state_exit
-            @cur_tile.do_collision(self, 0, @height/2)
-            @y = @anchor_y
+            @collide_tile.do_collision(self, 0, @height/2)
+            self.y = @anchor_y
             reset_physics
         end
     }
@@ -262,13 +262,13 @@ class Andy  < Actor
 
             #move right if nothing to the right
             if @controls[:right] == control_id && !@env.check_collision(self, @width / 2, 0) then
-                @x+=5
+                self.x+=5
                 ground_hug
             end
 
             #move left if nothing to the left
             if @controls[:left] == control_id && !@env.check_collision(self, -@width / 2, 0) then
-                @x-=5
+                self.x-=5
                 ground_hug
             end
 
@@ -276,7 +276,7 @@ class Andy  < Actor
             if @controls[:jump] == control_id && !@env.check_collision(self, 0, -@height / 2) &&
                 @env.check_collision(self, 0, @height / 2) then
 
-                @y-=10
+                self.y-=10
 
                 #set an upwards velocity
                 @init_y = JumpPower
@@ -291,7 +291,7 @@ class Andy  < Actor
 
                 #why 12 ? cos this factor is perfect for climbing steep hills
                 #if > 12 unnecessary looping (expensive) if < 12 then can't climb steep hills
-                @y-=@height / 12
+                @y-=@height / 8
                 begin
                     @y+=1
 
@@ -302,6 +302,7 @@ class Andy  < Actor
                     end
                 end until @env.check_collision(self, 0, @height / 2)
             end
+            self.y = @y
         end
 
         def state_exit
@@ -337,21 +338,21 @@ class Andy  < Actor
         new_x, new_y = do_physics
         
         #if collide with tile on way up then begin descent immediately
-        if @env.check_collision(self, 0, -@height/2) then @init_y = 0 end
+        if @env.check_collision(self, 0, -@height / 2) then @init_y = 0 end
         
         #determine direction of new coords
         x_direc = new_x > @x ? 1 : -1
         y_direc = new_y > @y ? 1 : -1
         
         #don't apply horizontal physics if obstructions to the left or right
-        if !@env.check_collision(self, x_direc * @width/2, 0) then
-            @x = new_x
+        if !@env.check_collision(self, x_direc * @width / 2, 0) then
+            self.x = new_x
             ground_hug
         end
         
         #dont apply vertical physics if obstructions above or below
-        if !@env.check_collision(self, 0, y_direc * @height/2) then
-            @y = new_y
+        if !@env.check_collision(self, 0, y_direc * @height / 2) then
+            self.y = new_y
         end
 
     end
@@ -366,7 +367,7 @@ class Andy  < Actor
     def check_collision
         check_actor_collision
         
-        if(tile=@env.check_collision(self, 0, @height/2)) then
+        if tile=@env.check_collision(self, 0, @height / 2) then
             reset_physics
         end
     end

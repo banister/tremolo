@@ -105,7 +105,11 @@ class Tank < VehicleActor
     end
 
     def check_collision
-        @world.each do |thing|
+        @cur_tile ||= @env.get_tile(@x.to_i, @y.to_i)
+        return if !@cur_tile
+
+        c_list = @cur_tile.collision_list
+        c_list.each do |thing|
             unless thing == self
                 if intersect?(thing) then
                     case thing

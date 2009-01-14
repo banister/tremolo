@@ -45,7 +45,7 @@ class GameController
         @font = Gosu::Font.new(@window, Gosu::default_font_name, 20)
 
         #setting up mouse
-        @mouse = MousePtr.new(@window, @world, @env)
+        @mouse = MousePtr.new(:game_state => @gs)
         @ec.register_listener(:button_down, @mouse)
        
 
@@ -61,12 +61,16 @@ class GameController
     def setup_world
         puts "setting up game world..."
 
+        #setting up environment
+        @env.load_env("desert1")
+
+
         #sample actors
         num_Sample_Actors = 5
-        num_Physors = 2
-        num_Diggers = 2
-        num_Andys = 5
-        num_Tanks = 0
+        num_Physors = 5
+        num_Diggers = 6
+        num_Andys = 6
+        num_Tanks = 2
 
         puts "creating #{num_Sample_Actors} SampleActors..."
         num_Sample_Actors.times  {
@@ -92,28 +96,24 @@ class GameController
         puts "creating #{num_Tanks/2.to_i} RedTanks..."
         (num_Tanks / 2).to_i.times {
             @world.push r=RedTank.new(:game_state => @gs, :facing => 1)
-            @ec.register_listener(:button_down, r)
         }
 
         puts "creating #{num_Tanks/2.to_i} GrayTanks..."
         (num_Tanks / 2).to_i.times {
             @world.push g=GrayTank.new(:game_state => @gs, :facing => -1)
-            @ec.register_listener(:button_down, g)
         }
 
         puts "randomizing positions of game actors..."
-        @world.each { |thing| thing.warp(rand(2924), rand(500)) }
+        @world.each { |thing| thing.warp(rand(2924), rand(300) + 446) }
 
         #bring tanks into the world
         @world.push r=RedTank.new(:game_state => @gs, :facing => 1)
 
         @world.push g=GrayTank.new(:game_state => @gs, :facing => -1)
 
-        r.warp(110, 515)
-        g.warp(1980, 464)
+        r.warp(110, 837)
+        g.warp(1980, 786)
 
-        #setting up environment
-        @env.load_env("desert1")
 
         puts "...done!"
     end

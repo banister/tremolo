@@ -52,7 +52,7 @@ class EnvironmentController
         lines = File.readlines(mapfile).map { |line| line.chop }
 
         #count the number of active tiles; tiles with numbers b/w 1 and 9
-        num_tiles = lines.inject(0) { |memo,v| memo+v.count(('1'..'9').to_a.join) }
+        num_tiles = lines.inject(0) { |memo,v| memo + v.count(('1'..'9').to_a.join) }
         @height = lines.size
         puts "loading environment..."
         puts "theme is: #{theme}; map is: map#{map}"
@@ -63,10 +63,10 @@ class EnvironmentController
         @tiles = Array.new(@height) do |y|
             Array.new(@width) do |x|
                 t_type = lines[y][x, 1].to_i
-                if t_type != 0 then
-                        @tile_theme[theme.to_sym].new(@window,@tile_size_x,@tile_size_y,@map_to_screen,
-                                                      @screen_to_map,t_type,x,y,self)
-                end
+              #  if t_type != 0 then
+                        @tile_theme[theme.to_sym].new(@window, @tile_size_x, @tile_size_y, @map_to_screen,
+                                                      @screen_to_map, t_type, x ,y, self)
+              #  end
 
             end
         end
@@ -77,31 +77,43 @@ class EnvironmentController
         #convert from screen to map coords
         map_x,map_y = *@screen_to_map.call(x,y)
 
-        if x < 0 || y < 0 then return; end
-        if !@tiles[map_y] then return; end
+        if x < 0 || y < 0 then return nil; end
+        if !@tiles[map_y] then return nil; end
 
         if @tiles[map_y][map_x] then
                 return @tiles[map_y][map_x]
-
         end
+        
+        return nil
     end
 
     def check_collision(actor, offset_x=0, offset_y=0)
 
-        collision_point = OpenStruct.new
-        collision_point.x = actor.x + offset_x
-        collision_point.y = actor.y + offset_y
+        x = actor.x + offset_x
+        y = actor.y + offset_y
 
         #convert from screen to map coords
-        map_x, map_y = *@screen_to_map.call(collision_point.x,collision_point.y)
+        map_x, map_y = @screen_to_map.call(x, y)
 
-        if collision_point.x < 0 || collision_point.y < 0 then return; end
+        if x < 0 || y < 0 then return; end
         if !@tiles[map_y] then return; end
 
         if @tiles[map_y][map_x] then
             tile = @tiles[map_y][map_x]
-            return tile.check_collision(collision_point.x,collision_point.y)
+            return tile.check_collision(x, y)
         end
+    end
+
+    def remove_actor(actor)
+        @c_list.delete(actor)
+    end
+        
+    def add_actor(actor)
+        @c_list << actor
+    end
+
+    def collision_list
+        @c_list
     end
 
     def draw(ox,oy)
@@ -119,7 +131,7 @@ class EnvironmentController
 
 end
 
-#abstract base class for tiles
+#abstract base class for tile
 class Tile
 
     include InterfaceElementTile
@@ -149,6 +161,9 @@ class Tile
         @anim_group = AnimGroup.new
 
         @x,@y = @map_to_screen.call(x,y)
+
+        #list of Actors within boundaries of this tile
+        @c_list = []
 
         puts "loading tile #{@@count_instance}.."
 
@@ -188,12 +203,24 @@ class Tile
          sy < Common::SCREEN_Y)
     end
 
+    def add_actor(actor)
+        @c_list << actor
+    end
+
+    def remove_actor(actor)
+        @c_list.delete(actor)
+    end
+
+    def collision_list
+        @c_list
+    end
+
     def draw(x,y,ox,oy)
         x,y = @map_to_screen.call(x,y)
 
         #screen coords
-        sx = x-ox
-        sy = y-oy
+        sx = x - ox
+        sy = y - oy
 
         return if !visible?(sx,sy)
 
@@ -206,14 +233,18 @@ class Tile
 
     def check_collision(cp_x, cp_y)
 
-        x = (cp_x - @x).to_i
-        y = (cp_y - @y).to_i
+        sx = (cp_x - @x).to_i
+        sy = (cp_y - @y).to_i
 
-        if TexPlay.get_pixel(@image, x, y)[3] !=0 then return self;  end
+        #might need to add tests for other directions too (e.g sx < 0 && sx > MAX && sy > MAX etc)
+        return if sy < 0 
+        if TexPlay.get_pixel(@image, sx, sy)[3] !=0 then return self;  end
     end
 
+
+
     #override in base-class
-    def do_collision(actor,offset_x=0,offset_y=0)
+    def do_collision(actor, offset_x=0, offset_y=0)
         puts "A #{self.class} collided with a #{actor.class}"
 
         s = OpenStruct.new

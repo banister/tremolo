@@ -5,21 +5,27 @@ require 'base_classes'
 class MousePtr
     include BoundingBox
 
+    ScrollBorder_x = 200
+    ScrollBorder_y = 50
+    ScrollSpeed = 12
+
     #screen coordinates of mouse
     attr_accessor :rx, :ry
 
     #scrolling variables
-
     attr_reader :screen_x, :screen_y
 
-    def initialize(window,world,env)
-        @window = window
-        @world = world
-        @env = env
-        @image = Gosu::Image.load_tiles(@window,"assets/crosshair.png",67,67,false)[0]
+    def initialize(hash_args)
+        check_args(hash_args, :game_state)
+
+        @gs = hash_args[:game_state]
+        @window = @gs.window
+        @ec = @gs.ec
+
+        @image = Gosu::Image.load_tiles(@window,"assets/crosshair.png",67, 67, false)[0]
         @x = Common::SCREEN_X / 2
         @y = Common::SCREEN_Y / 2
-        @rx,@ry = @x,@y
+        @rx, @ry = @x, @y
         @left_held = false
         @left_pressed = false
         @selec_obj = nil
@@ -27,9 +33,6 @@ class MousePtr
         #scrolling vars
         @screen_x = 0
         @screen_y = 0
-        @scroll_border_x = 200
-        @scroll_border_y = 50
-        @scroll_speed = 12
         @no_scroll = false
 
         #standard size bb
@@ -44,17 +47,17 @@ class MousePtr
         return if @no_scroll
 
         #x axis
-        if @rx <= @scroll_border_x && (@rx != 0 && @ry != 0) then
-            @screen_x -= @scroll_speed * ((@scroll_border_x - @rx) / @scroll_border_x.to_f)
-        elsif @rx >= Common::SCREEN_X - @scroll_border_x then
-            @screen_x += @scroll_speed * ((@rx - (Common::SCREEN_X - @scroll_border_x)) / @scroll_border_x.to_f)
+        if @rx <= ScrollBorder_x && (@rx != 0 && @ry != 0) then
+            @screen_x -= ScrollSpeed * ((ScrollBorder_x - @rx) / ScrollBorder_x.to_f)
+        elsif @rx >= Common::SCREEN_X - ScrollBorder_x then
+            @screen_x += ScrollSpeed * ((@rx - (Common::SCREEN_X - ScrollBorder_x)) / ScrollBorder_x.to_f)
         end
 
         #y axis
-        if @ry <= @scroll_border_y && (@ry != 0 && @ry != 0) then
-            @screen_y -= @scroll_speed * ((@scroll_border_y - @ry) / @scroll_border_y.to_f)
-        elsif @ry >= Common::SCREEN_Y - @scroll_border_y then
-            @screen_y += @scroll_speed * ((@ry-(Common::SCREEN_Y-@scroll_border_y)) / @scroll_border_y.to_f)
+        if @ry <= ScrollBorder_y && (@ry != 0 && @ry != 0) then
+            @screen_y -= ScrollSpeed * ((ScrollBorder_y - @ry) / ScrollBorder_y.to_f)
+        elsif @ry >= Common::SCREEN_Y - ScrollBorder_y then
+            @screen_y += ScrollSpeed * ((@ry - (Common::SCREEN_Y - ScrollBorder_y)) / ScrollBorder_y.to_f)
         end
     end
 
@@ -78,29 +81,23 @@ class MousePtr
                     #select object closest to center of target
                     @selec_obj = objs.inject { |m,c| dist(self,m) < dist(self,c) ? m : c }
 
-                    # tell object its been clicked
+                    #tell object its been clicked
                     @selec_obj.left_mouse_click
 
-                    #is it an Actor? exclude non-actors from drag & drop
-                    @selec_obj = nil if !(Actor === @selec_obj)
                 else
                     InterfaceElementActor.clear_last_clicked
-
                 end
 
-                #button is currently being held down, so try to 'drag' the object around.
+                #button is currently being held down
             elsif(@left_held && @selec_obj) then
 
-                    # alert object it's being held
-                    @selec_obj.left_mouse_held(@x, @y)
-
-
-      #           #release object if it's expired
-#                 if @selec_obj.expired then
-#                     @selec_obj = nil     
-#                     @left_held = false
-#                 end
-
+                #seamless transition between tiles
+                if @selec_obj.is_a?(Tile) then
+                    if (tile=@gs.env.get_tile(self.x, self.y)) != @selec_obj then
+                        @selec_obj = tile if tile
+                    end
+                end
+                @selec_obj.left_mouse_held(@x, @y)
             end
 
             #button press logic
@@ -153,7 +150,6 @@ class MousePtr
         #actual(game) coords
         @x = @window.mouse_x + screen_x
         @y = @window.mouse_y + screen_y
-
     end
 
     def draw
@@ -162,8 +158,14 @@ class MousePtr
 
     #determine game object selected by mouse
     def selected
+
         things = []
-        @world.each do |thing|
+
+        if tile=@gs.env.get_tile(self.x, self.y) then
+            things.push(tile)
+        end
+        
+        @gs.world.each do |thing|
             unless thing == self 
                 if intersect?(thing) then
                         things.push(thing)
@@ -171,12 +173,17 @@ class MousePtr
             end
         end
 
-        if tile=@env.check_collision(self) then
-                things.push(tile)
-        end
-
         return things if !things.empty?
     end
+
+    def check_args(hash_args, *args)
+        raise ArgumentError, "not a hash" if !hash_args.instance_of?(Hash)
+        if (hash_args.keys & args).size != args.size then
+            raise ArgumentError, "some required hash keys were missing for #{self.class}"
+        end
+        nil
+    end
+
 
     private :dist, :selected, :check_controls, :do_scroll
 
