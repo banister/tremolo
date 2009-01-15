@@ -6,7 +6,7 @@ module InterfaceElementActor
     @@last_clicked = nil
     
     def left_mouse_click
-        puts info
+        puts info if logging_level > 0
 
         state :Inactive
         
@@ -128,7 +128,7 @@ end
 # interface for Tiles
 module InterfaceElementTile
     def left_mouse_click
-        puts info
+        puts info if logging_level > 0
     end
 
     def left_mouse_held(mx, my)

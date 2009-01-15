@@ -14,7 +14,7 @@ require 'common'
 # Manages the game
 class GameController
 
-    GameState = Struct.new(:window, :world, :phys, :env, :ec)
+    GameState = Struct.new(:window, :world, :phys, :env, :ec, :logging_level)
     
     def initialize(window)
 
@@ -24,14 +24,18 @@ class GameController
         @anims = ImageSystem.new(@window)
         @world = Array.new
         @phys = PhysicsController.new
-        @env = EnvironmentController.new(@window)
         @ec = EventController.new
 
+        #needs to be here as env requires it
         @gs.window = @window
+        @env = EnvironmentController.new(@gs)
+
         @gs.world = @world
         @gs.phys = @phys
         @gs.env = @env
         @gs.ec = @ec
+
+        @gs.logging_level = 1
 
         setup_interface
         setup_world
@@ -67,9 +71,9 @@ class GameController
 
         #sample actors
         num_Sample_Actors = 5
-        num_Physors = 5
+        num_Physors = 7
         num_Diggers = 6
-        num_Andys = 6
+        num_Andys = 10
         num_Tanks = 2
 
         puts "creating #{num_Sample_Actors} SampleActors..."

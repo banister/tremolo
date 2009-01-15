@@ -22,7 +22,7 @@ class MousePtr
         @window = @gs.window
         @ec = @gs.ec
 
-        @image = Gosu::Image.load_tiles(@window,"assets/crosshair.png",67, 67, false)[0]
+        @image = Gosu::Image.new(@window,"assets/crosshair1.png")
         @x = Common::SCREEN_X / 2
         @y = Common::SCREEN_Y / 2
         @rx, @ry = @x, @y
@@ -37,6 +37,10 @@ class MousePtr
 
         #standard size bb
         set_bounding_box(50,50)
+    end
+
+    def logging_level
+        @gs.logging_level
     end
 
     #scrolling & ensure mouse isn't in start/asleep state (both y & x==0 at start before first move)
@@ -132,7 +136,10 @@ class MousePtr
         if id == Gosu::Button::MsLeft then @left_pressed = true; end
 
         #toggle @no_scroll flag, turns on/off scrolling
-        if id == Gosu::Button::MsRight then @no_scroll =! @no_scroll; puts "no scroll is: #{@no_scroll}"; end
+        if id == Gosu::Button::MsRight then
+            @no_scroll =! @no_scroll
+            puts "no scroll is: #{@no_scroll}" if logging_level > 0
+        end
     end
 
     def update

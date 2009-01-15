@@ -13,23 +13,27 @@ require 'interface'
 #manages environment (landscape)
 class EnvironmentController
 
+    TileSize_X = 420
+    TileSize_Y = 322
 
-    def initialize(window)
-        @window = window
-        @envmap = []
-        @tile_size_x = 420
-        @tile_size_y = 322
+    def initialize(game_state)
+
+        @gs = game_state
+        @window = game_state.window
         @tile_theme = {}
 
         #mapping functions
-        @map_to_screen = lambda { |x,y| [x * @tile_size_x, 124 + y * @tile_size_y] }
-        @screen_to_map = lambda { |x,y| [(x / @tile_size_x).to_i, ((y - 124)/@tile_size_y).to_i] }
+        @map_to_screen = lambda { |x,y| [x * TileSize_X, 124 + y * TileSize_Y] }
+        @screen_to_map = lambda { |x,y| [(x / TileSize_X).to_i, ((y - 124) / TileSize_Y).to_i] }
 
         setup_themes
     end
 
-    def setup_themes
+    def logging_level
+        @gs.logging_level
+    end
 
+    def setup_themes
         @tile_theme[:desert] = DesertTile
         @tile_theme[:lush] = LushTile
     end
@@ -64,8 +68,7 @@ class EnvironmentController
             Array.new(@width) do |x|
                 t_type = lines[y][x, 1].to_i
               #  if t_type != 0 then
-                @tile_theme[theme.to_sym].new(@window, @tile_size_x, @tile_size_y, @map_to_screen,
-                                              @screen_to_map, t_type, x ,y, self)
+                @tile_theme[theme.to_sym].new(@gs, @map_to_screen, @screen_to_map, t_type, x ,y)
               #  end
 
             end
@@ -135,12 +138,11 @@ class Tile
     attr_reader :x,:y
 
     #meaningless but necessary for consistent interface
-    def initialize(window, size_x, size_y, map_to_screen, screen_to_map, t_type, x, y, env)
+    def initialize(game_state, map_to_screen, screen_to_map, t_type, x, y)
         @@count_instance += 1
-        @window = window
-        @env = env
-        @size_x = size_x
-        @size_y = size_y
+        @gs = game_state
+        @window = game_state.window
+        @env = game_state.env
         @map_to_screen = map_to_screen
         @screen_to_map = screen_to_map
         @t_type = t_type
@@ -160,6 +162,10 @@ class Tile
 
         setup_gfx
         setup_sound
+    end
+
+    def logging_level
+        @gs.logging_level
     end
 
     def set_theme
@@ -229,11 +235,9 @@ class Tile
         if TexPlay.get_pixel(@image, sx, sy)[3] !=0 then return self;  end
     end
 
-
-
     #override in base-class
     def do_collision(actor, offset_x=0, offset_y=0)
-        puts "A #{self.class} collided with a #{actor.class}"
+        puts "A #{self.class} collided with a #{actor.class}" if logging_level > 1
 
         s = OpenStruct.new
 

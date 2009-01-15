@@ -12,9 +12,9 @@ end
 require 'gosu'
 require 'gamecontrol'
 
-require 'ruby-prof'
+#require 'ruby-prof'
 
-RubyProf.start
+#RubyProf.start
 
 #Entry point
 class MyWindow < Gosu::Window
@@ -60,7 +60,6 @@ class MyWindow < Gosu::Window
     end
 
 end
-
 
 w = MyWindow.new
 w.show

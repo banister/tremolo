@@ -7,7 +7,7 @@ require 'gosu'
 require 'common'
 require 'stateology'
 require 'interface'
-require 'inline'
+#require 'inline'
 
 #provide bounding box functionality for game objects
 module BoundingBox
@@ -23,49 +23,49 @@ module BoundingBox
         @y_offset = ysize * shrink / 2
     end
 
-    inline do |builder|
-        builder.c %{
-         VALUE
-         intersect(VALUE o) { 
-                int x, y, y_offset, x_offset, ox, oy, ox_offset, oy_offset;
-                VALUE s = self;
+#     inline do |builder|
+#         builder.c %{
+#          VALUE
+#          intersect(VALUE o) { 
+#                 int x, y, y_offset, x_offset, ox, oy, ox_offset, oy_offset;
+#                 VALUE s = self;
                 
-                x = NUM2INT(rb_iv_get(s, "@x"));
-                y = NUM2INT(rb_iv_get(s, "@y"));
-                x_offset = NUM2INT(rb_iv_get(s, "@x_offset"));
-                y_offset = NUM2INT(rb_iv_get(s, "@y_offset"));
+#                 x = NUM2INT(rb_iv_get(s, "@x"));
+#                 y = NUM2INT(rb_iv_get(s, "@y"));
+#                 x_offset = NUM2INT(rb_iv_get(s, "@x_offset"));
+#                 y_offset = NUM2INT(rb_iv_get(s, "@y_offset"));
  
-                ox = NUM2INT(rb_iv_get(o, "@x"));
-                oy = NUM2INT(rb_iv_get(o, "@y"));
-                ox_offset = NUM2INT(rb_iv_get(o, "@x_offset"));
-                oy_offset = NUM2INT(rb_iv_get(o, "@y_offset"));
+#                 ox = NUM2INT(rb_iv_get(o, "@x"));
+#                 oy = NUM2INT(rb_iv_get(o, "@y"));
+#                 ox_offset = NUM2INT(rb_iv_get(o, "@x_offset"));
+#                 oy_offset = NUM2INT(rb_iv_get(o, "@y_offset"));
  
 
-                if(y - y_offset < oy + oy_offset && y + y_offset > oy - oy_offset &&
-                       x - x_offset < ox + ox_offset && x + x_offset > ox - ox_offset)
-                    return Qtrue;
-                else
-                    return Qfalse; 
+#                 if(y - y_offset < oy + oy_offset && y + y_offset > oy - oy_offset &&
+#                        x - x_offset < ox + ox_offset && x + x_offset > ox - ox_offset)
+#                     return Qtrue;
+#                 else
+#                     return Qfalse; 
 
-          }
-        }, :method_name => "intersect?"
-    end
-    
-#     def intersect?(other)
-#         oy = other.y
-#         ox = other.x
-#         oy_offset = other.y_offset
-#         ox_offset = other.x_offset
-        
-#         if @y - @y_offset < oy + oy_offset && @y + @y_offset > oy - oy_offset &&
-#                 @x - @x_offset < ox + ox_offset && @x + @x_offset > ox - ox_offset then
-#             return true
-
-#         else
-#             return false
-#         end
+#           }
+#         }, :method_name => "intersect?"
 #     end
- end
+    
+    def intersect?(other)
+        oy = other.y
+        ox = other.x
+        oy_offset = other.y_offset
+        ox_offset = other.x_offset
+       
+        if @y - @y_offset < oy + oy_offset && @y + @y_offset > oy - oy_offset &&
+                @x - @x_offset < ox + ox_offset && @x + @x_offset > ox - ox_offset then
+            return true
+
+        else
+            return false
+        end
+    end
+end
 ############## End BoundingBox ################
 
 
@@ -154,6 +154,10 @@ class Actor
 
         anim.load_animation(:standard)
         @anim = anim
+    end
+
+    def logging_level
+        @gs.logging_level
     end
 
     def register_listener(event)
@@ -304,7 +308,7 @@ class Actor
 
     def check_bounds
         if @y > Common::SCREEN_Y * 3 || @y < -Common::SCREEN_Y || @x >Common::SCREEN_X * 3 || @x < -Common::SCREEN_X then
-            puts "#{self.class} fell of the screen at (#{@x.to_i}, #{@y.to_i})"
+            puts "#{self.class} fell of the screen at (#{@x.to_i}, #{@y.to_i})" if logging_level > 0
             remove_from_world(self)
         end 
     end
@@ -317,7 +321,7 @@ class Actor
         article_one = s_class[0,1] =~ /[aeiou]/i ? "An" : "A"
         article_two = c_class[0,1] =~ /[aeiou]/i ? "an" : "a"
 
-       # puts "#{article_one} #{s_class} collided with #{article_two} #{c_class}"
+        puts "#{article_one} #{s_class} collided with #{article_two} #{c_class}" if logging_level > 1
     end
 
     def x=(v)
@@ -482,6 +486,10 @@ module Physical
 
         def check_collision
             check_actor_collision
+        end
+
+        def state_exit
+            reset_physics
         end
     }
 
