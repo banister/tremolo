@@ -10,35 +10,41 @@ require 'actors'
 require 'tanks'
 require 'environ'
 require 'common'
+require 'actordsl'
 
 # Manages the game
 class GameController
 
-    GameState = Struct.new(:window, :world, :phys, :env, :ec, :logging_level)
+    GameState = Struct.new(:window, :world, :phys, :env, :ec, :mouse, :logging_level)
+
+    LogLevel = 1
     
     def initialize(window)
 
         @gs = GameState.new
         @window = window
+        @world = Array.new
+
         @jukebox = MusicSystem.new(@window)
         @anims = ImageSystem.new(@window)
-        @world = Array.new
         @phys = PhysicsController.new
         @ec = EventController.new
+        @env = EnvironmentController.new(@window, @world, LogLevel)
+        @mouse = MousePtr.new(@window, LogLevel, @world, @env, @ec)
 
-        #needs to be here as env requires it
         @gs.window = @window
-        @env = EnvironmentController.new(@gs)
-
         @gs.world = @world
+        @gs.mouse = @mouse
         @gs.phys = @phys
         @gs.env = @env
         @gs.ec = @ec
 
-        @gs.logging_level = 1
+        @gs.logging_level = LogLevel
+
+        @actor_dsl = ActorDSL.new(@gs)
 
         setup_interface
-        setup_world
+        setup_world("helga1")
 
         puts "starting game."
     end
@@ -49,12 +55,13 @@ class GameController
         @font = Gosu::Font.new(@window, Gosu::default_font_name, 20)
 
         #setting up mouse
-        @mouse = MousePtr.new(:game_state => @gs)
-        @ec.register_listener(:button_down, @mouse)
        
 
         #setting up game music
-        playlist = [@jukebox.load_song("assets/bouncelong.ogg"), @jukebox.load_song("assets/loop.ogg")]
+        playlist = [@jukebox.load_song("assets/music/isee.ogg"),
+                    @jukebox.load_song("assets/music/fugue.ogg"),
+                    @jukebox.load_song("assets/music/lush.ogg")]
+        
         @jukebox.make_play_list(:soundtrack, playlist)
         @jukebox.load_play_list(:soundtrack)
         @jukebox.loop = true
@@ -62,62 +69,14 @@ class GameController
         puts "...done!"
     end
 
-    def setup_world
+    def setup_world(level)
         puts "setting up game world..."
 
-        #setting up environment
-        @env.load_env("desert1")
+        #setting up environment tiles
+        width_height = @env.load_env(level)
 
-
-        #sample actors
-        num_Sample_Actors = 5
-        num_Physors = 7
-        num_Diggers = 6
-        num_Andys = 10
-        num_Tanks = 2
-
-        puts "creating #{num_Sample_Actors} SampleActors..."
-        num_Sample_Actors.times  {
-            @world.push SampleActor.new(:game_state => @gs)
-        }
-
-        puts "creating #{num_Diggers} Diggers..."
-        num_Diggers.times {
-            @world.push Digger.new(:game_state => @gs)
-        }
-        
-        num_Physors.times {
-            mag = rand(40) - 20
-            @world.push Physor.new(:game_state => @gs, :mag => mag)
-            puts "creating Physor of mag #{mag}..."
-        }
-
-        puts "creating #{num_Andys} Andys..."
-        num_Andys.times {
-            @world.push Andy.new(:game_state => @gs)
-        }
-
-        puts "creating #{num_Tanks/2.to_i} RedTanks..."
-        (num_Tanks / 2).to_i.times {
-            @world.push r=RedTank.new(:game_state => @gs, :facing => 1)
-        }
-
-        puts "creating #{num_Tanks/2.to_i} GrayTanks..."
-        (num_Tanks / 2).to_i.times {
-            @world.push g=GrayTank.new(:game_state => @gs, :facing => -1)
-        }
-
-        puts "randomizing positions of game actors..."
-        @world.each { |thing| thing.warp(rand(2924), rand(300) + 446) }
-
-        #bring tanks into the world
-        @world.push r=RedTank.new(:game_state => @gs, :facing => 1)
-
-        @world.push g=GrayTank.new(:game_state => @gs, :facing => -1)
-
-        r.warp(110, 837)
-        g.warp(1980, 786)
-
+        #setting up actors
+        @actor_dsl.load_actors(level, *width_height)
 
         puts "...done!"
     end
@@ -135,17 +94,14 @@ class GameController
 
     def draw
         #update scrolling info from mouse
-        screen_x,screen_y = @mouse.screen_x, @mouse.screen_y
+        screen_x, screen_y = @mouse.screen_x, @mouse.screen_y
 
-        @env.draw(screen_x,screen_y)
-        @world.each { |thing|  thing.draw(screen_x,screen_y) }
+        @env.draw(screen_x, screen_y)
+        @world.each { |thing|  thing.draw(screen_x, screen_y) }
 
         @mouse.draw
 
-#        @font.draw("Player 1: Angle: #{360-@player1.angle}   Velocity: #{@player1.velocity}    Health: #{@player1.health}"+
-#                   " "*48+
-#                   "Player 2: Angle: #{@player2.angle}   Velocity: #{@player2.velocity}    Health: #{@player2.health}" ,
-#                   10, 10, 3, 1.0, 1.0, 0xffffff00)
+        @font.draw("mouse (#{@mouse.x.to_i}, #{@mouse.y.to_i})", 840, 10, 3, 1.0, 1.0, 0xffffff00)
     end
 
     def button_down(id)

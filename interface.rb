@@ -53,10 +53,24 @@ module InterfaceElementVehicle
     def left_mouse_click
 
         if  last_clicked.kind_of?(Andy) && actor_collision_with?(last_clicked) then
-            if add_driver(last_clicked) then
-                last_clicked.entered_vehicle(self)
-            end
+             add_driver(last_clicked)            
         end
+
+        if last_clicked == self then
+            remove_driver
+        end
+
+        #@_saved_coords = [@x, @y]
+        #puts "saved coords click: #{@_saved_coords}"
+
+        super
+    end
+
+    def left_mouse_released
+        #puts "saved coords release: #{_saved_coords}"
+        #if @_saved_coords == [@x, @y] then
+        #    remove_driver
+        #end
 
         super
     end
@@ -75,6 +89,8 @@ module InterfaceElementControllable
         super
 
         create_arrow
+
+            
     end
 
     def left_mouse_released
@@ -100,7 +116,7 @@ module InterfaceElementControllable
         new_anim = register_animation(:arrow, :x => method(:x), :y => y_float, :x_offset => 0, :y_offset => -80,
                                       :zorder => Common::ZOrder::Interface)
 
-        new_anim.make_animation(:standard, new_anim.load_image("assets/arrow.png"), :timing => 1)
+        new_anim.make_animation(:standard, new_anim.load_image("assets/arrow.png"))
 
         new_anim.load_animation(:standard)
     end

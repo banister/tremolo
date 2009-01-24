@@ -105,10 +105,10 @@ class Tank < VehicleActor
     end
 
     def check_collision
-        @cur_tile ||= @env.get_tile(@x.to_i, @y.to_i)
-        return if !@cur_tile
+        #@cur_tile ||= @env.get_tile(@x.to_i, @y.to_i)
+        #return if !@cur_tile
 
-        c_list = @cur_tile.collision_list
+        c_list = @world #@cur_tile.collision_list
         c_list.each do |thing|
             unless thing == self
                 if intersect?(thing) then
@@ -181,7 +181,7 @@ class Tank < VehicleActor
         
         return if !visible?(sx, sy)
 
-        timg.draw_rot(sx + (@facing * @turret.x),sy + @turret.y,Common::ZOrder::Player, @angle, 0, 0.5)
+        timg.draw_rot(sx + (@facing * @turret.x),sy + @turret.y, Common::ZOrder::Actor, @angle, 0, 0.5)
 
         @anim_group.draw(ox, oy)
     end
@@ -212,8 +212,8 @@ class RedTank < Tank
             add_effect(:turret,"assets/turret.wav")
         end
         setup_gfx(:facing => facing) do
-            make_animation(:standard, load_image("assets/rtank.png"), :timing => 1, :loop => false)
-            make_animation(:burnedtank, load_image("assets/tankburned.png"), :timing => 1, :loop => false)
+            make_animation(:standard, load_image("assets/rtank.png"))
+            make_animation(:burnedtank, load_image("assets/tankburned.png"))
         end
     end
 
@@ -244,8 +244,8 @@ class GrayTank < Tank
         end
         
         setup_gfx(:facing => facing) do
-            make_animation(:standard, load_image("assets/gtank.png"), :timing => 1, :loop => false)
-            make_animation(:burnedtank, load_image("assets/tankburned.png"), :timing => 1, :loop => false)
+            make_animation(:standard, load_image("assets/gtank.png"))
+            make_animation(:burnedtank, load_image("assets/tankburned.png"))
         end
     end
 

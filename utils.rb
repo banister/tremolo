@@ -62,16 +62,12 @@ end
 
 module HashArgsModule
     def check_args(hash_args, *args)
-        if hash_args.first.instance_of?(Hash)
-            hash_args = hash_args.first
-        else
-            raise ArgumentError, "Hash argument expected for #{self.class}"
-        end
+         raise ArgumentError, "Hash argument expected for #{self.class}" if !hash_args.instance_of?(Hash) 
+       
         
         if (hash_args.keys & args).size != args.size then
-            raise ArgumentError, "some required hash keys were missing for #{self.class}"
+            raise ArgumentError, "some required hash keys were missing for #{self.class}: #{args - hash_args.keys}"
         end
-        hash_args
     end
 
 end

@@ -29,7 +29,7 @@ class Physor < Actor
         img = @mag < 0 ? "assets/repulsor.png" : "assets/sphere.png"
 
         setup_gfx do
-            make_animation(:standard, load_image(img), :timing => 1)
+            make_animation(:standard, load_image(img))
         end
     end
     
@@ -43,7 +43,7 @@ class Physor < Actor
 
     def within_range(actor,acc)
         if !intersect?(actor) then
-            volume = [acc ** 3,900.0].min / 900.0
+            volume = [acc ** 3, 900.0].min / 900.0
             @effects.play_effect(:static,volume)
         end
     end
@@ -78,7 +78,7 @@ class SampleActor < Actor
             make_animation(:dying, load_frames("assets/lanternsmoke.png",20,18),:timing => 0.05,
                            :loop => false, :hold => false)
 
-            make_animation(:standard, load_frames("assets/lanternsmoke.png",20,18).first, :timing => 1)
+            make_animation(:standard, load_frames("assets/lanternsmoke.png",20,18).first)
         end
 
         setup_sound do
@@ -117,7 +117,7 @@ class Projectile  < Actor
         setup_vars(hash_args)
         
         setup_gfx do
-            make_animation(:standard, load_image("assets/ball.png"), :timing => 1)
+            make_animation(:standard, load_image("assets/ball.png"))
         end
 
         setup_sound do
@@ -192,7 +192,7 @@ class Digger  < VehicleActor
 
     def setup
         setup_gfx do 
-            make_animation(:standard, load_image("assets/drill3.png"), :timing => 1, :hold => true)
+            make_animation(:standard, load_image("assets/drill3.png"))
         end
 
         setup_sound do
@@ -313,7 +313,7 @@ class Andy  < Actor
 
     def setup
         setup_gfx do 
-            make_animation(:standard, load_image("assets/dude.png"), :timing => 1, :hold => true)
+            make_animation(:standard, load_image("assets/dude.png"))
         end
 
         setup_controls
@@ -322,7 +322,8 @@ class Andy  < Actor
     end
 
     def setup_controls
-        @controls = { :right => Gosu::Button::KbRight, :left => Gosu::Button::KbLeft,
+        @controls = { :right => Gosu::Button::KbRight,
+            :left => Gosu::Button::KbLeft,
             :jump => Gosu::Button::KbUp }
     end
 
@@ -330,6 +331,7 @@ class Andy  < Actor
         do_controls { |val| @window.button_down? val }
         check_collision
         apply_physics
+        # ground_hug  ONLY run ground_hug if ground beneath is moving
         check_bounds
     end
 
@@ -361,7 +363,6 @@ class Andy  < Actor
         "#{super} @ (#{@x.to_i}, #{@y.to_i})"
     end
 
-    #ensure Andy follows curve of landscape
     def ground_hug; end
 
     def check_collision
@@ -377,6 +378,13 @@ class Andy  < Actor
         state :Inactive
         toggle_physics
         remove_from_world(self)
+    end
+
+    def exited_vehicle(vehicle)
+        add_to_world(self)
+        warp(vehicle.x, vehicle.y)
+        toggle_physics
+        state nil
     end
 
     private :check_collision, :setup_gfx, :setup_sound

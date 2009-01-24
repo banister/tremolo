@@ -1,0 +1,1 @@
+create_actor :class => GrayTank, :facing => -1, :warp => [100, 500]

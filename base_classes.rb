@@ -11,7 +11,7 @@ require 'interface'
 
 #provide bounding box functionality for game objects
 module BoundingBox
-    attr_reader :x,:y
+    attr_accessor :x,:y
     attr_reader :x_offset
     attr_reader :y_offset
 
@@ -22,34 +22,6 @@ module BoundingBox
         @x_offset = xsize * shrink / 2
         @y_offset = ysize * shrink / 2
     end
-
-#     inline do |builder|
-#         builder.c %{
-#          VALUE
-#          intersect(VALUE o) { 
-#                 int x, y, y_offset, x_offset, ox, oy, ox_offset, oy_offset;
-#                 VALUE s = self;
-                
-#                 x = NUM2INT(rb_iv_get(s, "@x"));
-#                 y = NUM2INT(rb_iv_get(s, "@y"));
-#                 x_offset = NUM2INT(rb_iv_get(s, "@x_offset"));
-#                 y_offset = NUM2INT(rb_iv_get(s, "@y_offset"));
- 
-#                 ox = NUM2INT(rb_iv_get(o, "@x"));
-#                 oy = NUM2INT(rb_iv_get(o, "@y"));
-#                 ox_offset = NUM2INT(rb_iv_get(o, "@x_offset"));
-#                 oy_offset = NUM2INT(rb_iv_get(o, "@y_offset"));
- 
-
-#                 if(y - y_offset < oy + oy_offset && y + y_offset > oy - oy_offset &&
-#                        x - x_offset < ox + ox_offset && x + x_offset > ox - ox_offset)
-#                     return Qtrue;
-#                 else
-#                     return Qfalse; 
-
-#           }
-#         }, :method_name => "intersect?"
-#     end
     
     def intersect?(other)
         oy = other.y
@@ -76,6 +48,7 @@ class Actor
     include Stateology
     include BoundingBox
     include InterfaceElementActor
+    include HashArgsModule
 
     # state where nothing happens except drawing updates
     state(:Inactive) { 
@@ -107,6 +80,8 @@ class Actor
         else
             basic_setup(hash_args)
         end
+
+        puts "creating #{article self.class.to_s} #{self.class}"
     end
 
     def basic_setup(hash_args)
@@ -210,14 +185,29 @@ class Actor
         @cur_tile.remove_actor obj if @cur_tile
         @world.delete obj
     end
+
+    def mouse
+        @gs.mouse
+    end
+
+    def mouse_on?
+        intersect?(@gs.mouse)
+    end
+
+    def check_mouse_collision
+        do_mouse_collision if mouse_on?
+    end
+
+    #a stub
+    def do_mouse_collision; end
     
     def check_actor_collision
-        @cur_tile ||= @env.get_tile(@x, @y)
+        #@cur_tile ||= @env.get_tile(@x, @y)
 
         #actors aren't always in a tile, e.g falling off screen
-        return if !@cur_tile
+        #return if !@cur_tile
 
-        c_list = @cur_tile.collision_list
+        c_list = @world # @cur_tile.collision_list
 
         c_list.each do |thing|
             next if thing == self
@@ -241,61 +231,20 @@ class Actor
         end
     end
 
-   #  inline do |builder|
-#         builder.prefix %{ 
-#          VALUE
-#          intersect(VALUE s, VALUE o) { 
-#                 int x, y, y_offset, x_offset, ox, oy, ox_offset, oy_offset;
-                
-#                 x = NUM2INT(rb_iv_get(s, "@x"));
-#                 y = NUM2INT(rb_iv_get(s, "@y"));
-#                 x_offset = NUM2INT(rb_iv_get(s, "@x_offset"));
-#                 y_offset = NUM2INT(rb_iv_get(s, "@y_offset"));
- 
-#                 ox = NUM2INT(rb_iv_get(o, "@x"));
-#                 oy = NUM2INT(rb_iv_get(o, "@y"));
-#                 ox_offset = NUM2INT(rb_iv_get(o, "@x_offset"));
-#                 oy_offset = NUM2INT(rb_iv_get(o, "@y_offset"));
- 
-
-#                 if(y - y_offset < oy + oy_offset && y + y_offset > oy - oy_offset &&
-#                        x - x_offset < ox + ox_offset && x + x_offset > ox - ox_offset)
-#                     return Qtrue;
-#                 else
-#                     return Qfalse; 
-
-#           }
-#         }
-
-#         builder.c %{
-#          VALUE
-#          check_actor_collision() { 
-#              VALUE world, thing;
-             
-#              world = rb_iv_get(self, "@world");
-             
-#              int i;
-#              for(i = 0; i < RARRAY(world)->len; i++) { 
-#                  thing = rb_ary_entry(world, i);
-                 
-#                  if(thing == self) continue;
-
-#                  if(intersect(self, thing)) {
-#                    rb_funcall(self, rb_intern("do_collision"), 1, thing);
-#                    rb_funcall(thing, rb_intern("do_collision"), 1, self);
-#                  } 
-#               }
-#               return Qnil;
-#           }
-#         }
-#     end
 
     def actor_collision_with?(a)
-        @world.each do |thing|
-            unless thing == self 
-                if intersect?(thing) then
-                    return true if thing == a
-                end
+        #@cur_tile ||= @env.get_tile(@x, @y)
+
+        #actors aren't always in a tile, e.g falling off screen
+        #return if !@cur_tile
+
+        c_list = @world #@cur_tile.collision_list
+
+        c_list.each do |thing|
+            next if thing == self
+            
+            if intersect?(thing) then
+                return true if thing == a
             end
         end
         false
@@ -307,7 +256,8 @@ class Actor
     end
 
     def check_bounds
-        if @y > Common::SCREEN_Y * 3 || @y < -Common::SCREEN_Y || @x >Common::SCREEN_X * 3 || @x < -Common::SCREEN_X then
+        if @y > Common::SCREEN_Y * 13 || @y < -10 * Common::SCREEN_Y ||
+                @x >Common::SCREEN_X * 13 || @x < -10 * Common::SCREEN_X then
             puts "#{self.class} fell of the screen at (#{@x.to_i}, #{@y.to_i})" if logging_level > 0
             remove_from_world(self)
         end 
@@ -317,44 +267,44 @@ class Actor
         s_class = self.class.to_s
         c_class = collider.class.to_s
 
-        # choose An or A depending on whether class name begins with a vowel
-        article_one = s_class[0,1] =~ /[aeiou]/i ? "An" : "A"
-        article_two = c_class[0,1] =~ /[aeiou]/i ? "an" : "a"
-
-        puts "#{article_one} #{s_class} collided with #{article_two} #{c_class}" if logging_level > 1
+        puts "#{article s_class} #{s_class} collided with #{article c_class} #{c_class}" if logging_level > 1
     end
 
-    def x=(v)
-        return @x = v if @y.nil?
-
-        @x = v
-
-        t = @env.get_tile(@x, @y)
-
-        if @cur_tile != t then
-            t.add_actor(self) if t
-
-            @cur_tile.remove_actor(self) if @cur_tile
-
-            @cur_tile = t
-        end
+    def article(noun)
+        noun[0, 1] =~ /[aeiou]/i ? "an" : "a"        
     end
 
-    def y=(v)
-        return @y = v if @x.nil?
+ #    def x=(v)
+#         return @x = v if !@y
 
-        @y = v
+#         @x = v
 
-        t = @env.get_tile(@x, @y)
+#         t = @env.get_tile(@x, @y)
 
-        if @cur_tile != t then
-            t.add_actor(self) if t
+#         if @cur_tile != t then
+#             t.add_actor(self) if t
 
-            @cur_tile.remove_actor(self) if @cur_tile
+#             @cur_tile.remove_actor(self) if @cur_tile
 
-            @cur_tile = t
-        end
-    end
+#             @cur_tile = t
+#         end
+#     end
+
+#     def y=(v)
+#         return @y = v if !@x
+
+#         @y = v
+
+#         t = @env.get_tile(@x, @y)
+
+#         if @cur_tile != t then
+#             t.add_actor(self) if t
+
+#             @cur_tile.remove_actor(self) if @cur_tile
+
+#             @cur_tile = t
+#         end
+#     end
 
     def warp(xv, yv)
         self.x = xv
@@ -377,14 +327,6 @@ class Actor
 
     def info
         "Object information:\nType: #{self.class}"
-    end
-
-    def check_args(hash_args, *args)
-        raise ArgumentError, "not a hash" if !hash_args.instance_of?(Hash)
-        if (hash_args.keys & args).size != args.size then
-            raise ArgumentError, "some required hash keys were missing for #{self.class}"
-        end
-        nil
     end
 
     def toggle_idle
@@ -417,10 +359,17 @@ class VehicleActor < Actor
     def add_driver(driver)
         if @drivers.size < NumberOfSeats
             @drivers.push driver
+            driver.entered_vehicle(self)
 
             return driver
         end
         nil
+    end
+
+    def remove_driver
+        driver = @drivers.shift
+        driver.exited_vehicle(self) if driver
+        driver
     end
 
     def driver_count
@@ -447,11 +396,25 @@ class VehicleActor < Actor
                 timer_touch(:vehicle_arrow_timeout)
 
             else
-                register_timer(:vehicle_arrow_timeout, :time_out => 0.1,
-                               :repeat => false,
+                register_timer(:vehicle_arrow_timeout, :time_out => 0.2,
                                :action => lambda { unregister_animation(:vehicle_arrow) })
             end
-        end
+
+            # change the mouse pointer NEW!
+            if mouse_on? then
+                 if mouse.cur_pointer != :on_vehicle then
+                     mouse.change_pointer(:on_vehicle)
+                 end
+                
+                if timer_exist?(:vehicle_pointer_timeout) then
+                    timer_touch(:vehicle_pointer_timeout)
+                else
+                    register_timer(:vehicle_pointer_timeout, :time_out => 0.01,
+                                   :action => lambda { mouse.change_pointer(:standard) })
+                end
+            end
+            
+         end
     end
 
     def create_vehicle_arrow

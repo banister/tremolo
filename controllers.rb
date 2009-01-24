@@ -15,12 +15,13 @@ class ImageSystem
     end
 
     attr_accessor :facing
-    
+
     def initialize(window, facing=1)
         @window = window
         @animations = {}
         @frame_counter = 0
         @cur_anim = nil
+        @cur_anim_name = nil
         @timer = 0
         @anim = {}
         @queue = []
@@ -32,14 +33,23 @@ class ImageSystem
     end
     
     def load_frames(filename,frame_width,frame_height)
-        return Gosu::Image.load_tiles(@window,filename,frame_width,frame_height,false)
+        return Gosu::Image.load_tiles(@window, filename, frame_width,
+                                      frame_height, false)
     end
     
     def get_animation(anim_name)
         return @anim[anim_name].frames
     end
+
+    def cur_anim_name
+        @cur_anim_name
+    end
+
+    def available_anims
+        @anim.keys
+    end
     
-    def make_animation(anim_name, frame_list, hash_args)
+    def make_animation(anim_name, frame_list, hash_args={})
 
         # default args (taking into account 'false' is a valid arg)
         timing = hash_args[:timing].nil? ? 1 : hash_args[:timing] 
@@ -54,7 +64,8 @@ class ImageSystem
         @anim[anim_name] = element
     end
     
-    def load_animation(anim_name)   
+    def load_animation(anim_name)
+        @cur_anim_name = anim_name
         @cur_anim = @anim[anim_name]
         @frame_counter = 0
         @timer = Time.now.to_f
@@ -163,7 +174,7 @@ class AnimGroup
          sy - img.height / 2 < Common::SCREEN_Y)
     end
     
-    def new_entry(sym, hash_args, &block)
+    def new_entry(sym, hash_args={}, &block)
         g = @group[sym] = Anim.new
 
         g.x = hash_args[:x]
@@ -215,8 +226,8 @@ class TimerSystem
         @timers = {}
     end
 
-    def register_timer(sym, *hash_args)
-        hash_args = check_args(hash_args, :time_out, :action)
+    def register_timer(sym, hash_args={})
+        check_args(hash_args, :time_out, :action)
         
         @timers[sym] ||= TimerStruct.new
 
@@ -235,9 +246,10 @@ class TimerSystem
             if (Time.now.to_f - val.start_time) >= val.time_out then
                 val.action.call
             
-                return !val.repeat
+                !val.repeat
+            else
+                false
             end
-            false
         end
     end
 

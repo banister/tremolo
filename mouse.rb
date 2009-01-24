@@ -4,6 +4,7 @@ require 'base_classes'
 #mouse class
 class MousePtr
     include BoundingBox
+    include HashArgsModule
 
     ScrollBorder_x = 200
     ScrollBorder_y = 50
@@ -15,17 +16,42 @@ class MousePtr
     #scrolling variables
     attr_reader :screen_x, :screen_y
 
-    def initialize(hash_args)
-        check_args(hash_args, :game_state)
+    def initialize(window, loglevel, world, env, events)
+        @window = window
+        @logging_level = loglevel
+        @world = world
+        @env = env
+        @ec = events
+        @rot = 0
 
-        @gs = hash_args[:game_state]
-        @window = @gs.window
-        @ec = @gs.ec
+        setup_pointers
+        setup_vars
+    end
 
-        @image = Gosu::Image.new(@window,"assets/crosshair1.png")
+    def setup_pointers
+        @image = ImageSystem.new(@window)
+        @image.make_animation(:standard, @image.load_frames("assets/mcrosshair1.png", 67, 67), :timing => 0.02,
+                              :loop => true)
+        
+        @image.make_animation(:on_vehicle, @image.load_frames("assets/mcrosshair2.png", 67, 67)[0])
+        
+        @image.load_animation(:standard)
+
+        @cur_ptr = @image.cur_anim_name
+
+        #standard size bb
+        set_bounding_box(20,20) 
+    end
+
+    def setup_vars
+        @ec.register_listener(:button_down, self)
+        
+        #coord vars
         @x = Common::SCREEN_X / 2
         @y = Common::SCREEN_Y / 2
         @rx, @ry = @x, @y
+        
+        #button logic
         @left_held = false
         @left_pressed = false
         @selec_obj = nil
@@ -34,13 +60,19 @@ class MousePtr
         @screen_x = 0
         @screen_y = 0
         @no_scroll = false
+    end
 
-        #standard size bb
-        set_bounding_box(50,50)
+    def change_pointer(ptr_name)
+        @image.load_animation(ptr_name)
+        @cur_ptr = ptr_name
+    end
+
+    def cur_pointer
+        @cur_ptr
     end
 
     def logging_level
-        @gs.logging_level
+        @logging_level
     end
 
     #scrolling & ensure mouse isn't in start/asleep state (both y & x==0 at start before first move)
@@ -97,7 +129,7 @@ class MousePtr
 
                 #seamless transition between tiles
                 if @selec_obj.is_a?(Tile) then
-                    if (tile=@gs.env.get_tile(self.x, self.y)) != @selec_obj then
+                    if (tile=@env.get_tile(self.x, self.y)) != @selec_obj then
                         @selec_obj = tile if tile
                     end
                 end
@@ -111,9 +143,10 @@ class MousePtr
             #button is no longer being pressed, so release the object
         else
             if @selec_obj then  
-                
+                #puts "release from @mouse"
                 # tell object its been released
                 @selec_obj.left_mouse_released
+                #puts "sent release msg to #{@selec_obj}"
 
                 #release expired objects for garbage collection (if @selec_obj is only ref to obj)
                 @selec_obj = nil
@@ -160,7 +193,13 @@ class MousePtr
     end
 
     def draw
-        @image.draw_rot(@rx,@ry,Common::ZOrder::Mouse,0.0)
+        if @cur_ptr == :on_vehicle then
+            @rot = (@rot + 8) % 360
+        else
+            @rot = 0
+        end
+        
+        @image.update.draw_rot(@rx,@ry,Common::ZOrder::Mouse,@rot)
     end
 
     #determine game object selected by mouse
@@ -168,11 +207,11 @@ class MousePtr
 
         things = []
 
-        if tile=@gs.env.get_tile(self.x, self.y) then
+        if tile=@env.get_tile(self.x, self.y) then
             things.push(tile)
         end
         
-        @gs.world.each do |thing|
+        @world.each do |thing|
             unless thing == self 
                 if intersect?(thing) then
                         things.push(thing)
@@ -182,15 +221,6 @@ class MousePtr
 
         return things if !things.empty?
     end
-
-    def check_args(hash_args, *args)
-        raise ArgumentError, "not a hash" if !hash_args.instance_of?(Hash)
-        if (hash_args.keys & args).size != args.size then
-            raise ArgumentError, "some required hash keys were missing for #{self.class}"
-        end
-        nil
-    end
-
 
     private :dist, :selected, :check_controls, :do_scroll
 

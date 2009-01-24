@@ -13,36 +13,43 @@ require 'interface'
 #manages environment (landscape)
 class EnvironmentController
 
-    TileSize_X = 420
-    TileSize_Y = 322
+    TileSize_X = 400 #420
+    TileSize_Y = 350 #322
 
-    def initialize(game_state)
+    Offset_X = 0
+    Offset_Y = 124
 
-        @gs = game_state
-        @window = game_state.window
+
+    def initialize(window, world, loglevel)
+
+        @window = window
+        @world = world
+        @logging_level = loglevel
         @tile_theme = {}
 
         #mapping functions
-        @map_to_screen = lambda { |x,y| [x * TileSize_X, 124 + y * TileSize_Y] }
-        @screen_to_map = lambda { |x,y| [(x / TileSize_X).to_i, ((y - 124) / TileSize_Y).to_i] }
+        @map_to_screen = lambda { |x,y| [x * TileSize_X, Offset_Y + y * TileSize_Y] }
+        @screen_to_map = lambda { |x,y| [(x / TileSize_X).to_i, ((y - Offset_Y) / TileSize_Y).to_i] }
 
         setup_themes
     end
 
     def logging_level
-        @gs.logging_level
+        @logging_level
     end
 
     def setup_themes
         @tile_theme[:desert] = DesertTile
         @tile_theme[:lush] = LushTile
+        @tile_theme[:helga] = HelgaTile
+        @tile_theme[:evian] = EvianTile
     end
 
     def load_env(thememap)
         num_tiles = 0
 
         #break up the parameter into its theme and map number components
-        theme,map = thememap.scan(/\d+|\D+/)
+        theme, map = thememap.scan(/\d+|\D+/)
 
         #set path for this theme
         theme_path = "assets/#{theme}/"
@@ -55,30 +62,32 @@ class EnvironmentController
 
         lines = File.readlines(mapfile).map { |line| line.chop }
 
-        #count the number of active tiles; tiles with numbers b/w 1 and 9
-        num_tiles = lines.inject(0) { |memo,v| memo + v.count(('1'..'9').to_a.join) }
-        @height = lines.size
         puts "loading environment..."
         puts "theme is: #{theme}; map is: map#{map}"
 
+        @height = lines.size
         @width = lines[0].size
+
+        num_tiles = @width * @height 
 
         puts "#{num_tiles} tiles in the environment..."
         @tiles = Array.new(@height) do |y|
             Array.new(@width) do |x|
-                t_type = lines[y][x, 1].to_i
-              #  if t_type != 0 then
-                @tile_theme[theme.to_sym].new(@gs, @map_to_screen, @screen_to_map, t_type, x ,y)
-              #  end
-
+                t_type = lines[y][x, 1]
+                @tile_theme[theme.to_sym].new(@window, @logging_level, self,
+                                              @map_to_screen, @screen_to_map, t_type, x, y)
             end
         end
+
         puts "...done!"
+
+        # return x and y limits (in pixels) of map
+        [ @width * TileSize_X, @height * TileSize_Y ]
     end
 
     def get_tile(x,y)
         #convert from screen to map coords
-        map_x,map_y = *@screen_to_map.call(x,y)
+        map_x, map_y = *@screen_to_map.call(x,y)
 
         if x < 0 || y < 0 then return nil; end
         if !@tiles[map_y] then return nil; end
@@ -138,11 +147,11 @@ class Tile
     attr_reader :x,:y
 
     #meaningless but necessary for consistent interface
-    def initialize(game_state, map_to_screen, screen_to_map, t_type, x, y)
+    def initialize(window, loglevel, env, map_to_screen, screen_to_map, t_type, x, y)
         @@count_instance += 1
-        @gs = game_state
-        @window = game_state.window
-        @env = game_state.env
+        @window = window
+        @logging_level = loglevel
+        @env = env
         @map_to_screen = map_to_screen
         @screen_to_map = screen_to_map
         @t_type = t_type
@@ -165,7 +174,7 @@ class Tile
     end
 
     def logging_level
-        @gs.logging_level
+        @logging_level
     end
 
     def set_theme
@@ -222,7 +231,7 @@ class Tile
 
         @anim_group.draw(ox, oy)
 
-        #if @x == 420 then TexPlay.leftshift @image, 2, :loop end   #CHANGED!
+        #if @x == 400 then TexPlay.leftshift @image, 2, :loop end   #CHANGED!
     end
 
     def check_collision(cp_x, cp_y)
@@ -332,7 +341,18 @@ class LushTile < Tile
     end
 end
 
+#helga tile class
+class HelgaTile < Tile
+    def set_theme
+        @theme = "helga"
+    end
+end
 
+class EvianTile < Tile
+    def set_theme
+        @theme = "evian"
+    end
+end
 
 
 

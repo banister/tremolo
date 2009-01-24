@@ -1,0 +1,5 @@
+create_actors :amount => 7, :class => SampleActor
+create_actors :amount => 10, :class => Andy
+create_actors :amount => 3, :class => Physor, :mag => 10
+create_actors :amount => 5, :class => Digger
+create_actor :class => RedTank, :warp => [100, 100]

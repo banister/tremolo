@@ -36,11 +36,11 @@ class MyWindow < Gosu::Window
     def button_down(id)    
         @game.button_down(id)
         if id == Gosu::KbEscape then
-            result = RubyProf.stop
+            #result = RubyProf.stop
 
             # Print a flat profile to text
-            printer = RubyProf::FlatPrinter.new(result)
-            printer.print(STDOUT, 0)
+            #printer = RubyProf::FlatPrinter.new(result)
+            #printer.print(STDOUT, 0)
 
             exit
         end
@@ -49,7 +49,7 @@ class MyWindow < Gosu::Window
     def draw      
         @game.draw
 
-        @font.draw("FPS: #{@frame_counter.fps}" ,
+        @font.draw("FPS: #{@frame_counter.fps}",
                    10, 10, 3, 1.0, 1.0, 0xffffff00)
     end
     

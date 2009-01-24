@@ -7,6 +7,7 @@ module Common
         Tile = 0.5
         Player = 0.8
         Actor = 0.9
+        Explode = 0.92
         Interface = 0.95
         Mouse = 1.0
     end
