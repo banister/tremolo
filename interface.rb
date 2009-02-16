@@ -57,22 +57,18 @@ module InterfaceElementVehicle
         end
 
         if last_clicked == self then
-            remove_driver
+            @_saved_coords = [@x.to_i, @y.to_i]
         end
-
-        #@_saved_coords = [@x, @y]
-        #puts "saved coords click: #{@_saved_coords}"
 
         super
     end
 
     def left_mouse_released
         #puts "saved coords release: #{_saved_coords}"
-        #if @_saved_coords == [@x, @y] then
-        #    remove_driver
-        #end
-
-        super
+        if @_saved_coords && @_saved_coords == [@x.to_i, @y.to_i] then
+            remove_driver
+        end
+        state nil
     end
 end
 
@@ -129,16 +125,22 @@ end
 
 # interface for Actors that are both Vehicles and Controllable
 module InterfaceElementControllableVehicle
-    include InterfaceElementControllable
     include InterfaceElementVehicle
 
     def left_mouse_released
+        super
+        
         if has_driver? then
             state :Controllable
         else
             state nil
         end
     end
+
+    def do_controls(*args, &block)
+    end
+    alias_method :button_down, :do_controls
+
 end
 
 # interface for Tiles

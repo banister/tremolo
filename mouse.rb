@@ -30,10 +30,9 @@ class MousePtr
 
     def setup_pointers
         @image = ImageSystem.new(@window)
-        @image.make_animation(:standard, @image.load_frames("assets/mcrosshair1.png", 67, 67), :timing => 0.02,
-                              :loop => true)
+        @image.make_animation(:standard, @image.load_image("assets/crosshair.png"))
         
-        @image.make_animation(:on_vehicle, @image.load_frames("assets/mcrosshair2.png", 67, 67)[0])
+        @image.make_animation(:on_vehicle, @image.load_image("assets/crosshair.png"))
         
         @image.load_animation(:standard)
 
