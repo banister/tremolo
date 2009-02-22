@@ -4,7 +4,6 @@ require 'base_classes'
 #mouse class
 class MousePtr
     include BoundingBox
-    include HashArgsModule
 
     ScrollBorder_x = 200
     ScrollBorder_y = 50
@@ -170,7 +169,7 @@ class MousePtr
         #toggle @no_scroll flag, turns on/off scrolling
         if id == Gosu::Button::MsRight then
             @no_scroll =! @no_scroll
-            puts "no scroll is: #{@no_scroll}" if logging_level > 0
+            message "no scroll is: #{@no_scroll}", :log_level => 0
         end
     end
 

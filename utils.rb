@@ -31,13 +31,35 @@ class Module
 
         }  
 
-        (argv-defaults.keys).each { |name|  
-            raise ArgumentError if !(Symbol === name)  
+        (argv - defaults.keys).each { |name|  
+            raise ArgumentError if !(name.instance_of?(Symbol))  
 
             attr_accessor name  
         }  
 
     end  
+end
+
+# logging and default logging_level & hash arg checking
+class Object
+    def check_args(hash_args, *args)
+        msg = "Some required hash keys were missing for #{self.class}:"
+        raise ArgumentError, "#{msg} #{args}" if !hash_args.instance_of?(Hash) 
+        
+        if (hash_args.keys & args).size != args.size then
+            raise ArgumentError, "#{msg} #{args - hash_args.keys}"
+        end
+    end
+
+    def message(content, options={})
+        check_args(options, :log_level)
+        
+        puts content if logging_level >= options[:log_level]
+    end
+
+    def logging_level
+        0
+    end
 end
 
 class FPSCounter
@@ -60,14 +82,3 @@ class FPSCounter
   end
 end
 
-module HashArgsModule
-    def check_args(hash_args, *args)
-         raise ArgumentError, "Hash argument expected for #{self.class}" if !hash_args.instance_of?(Hash) 
-       
-        
-        if (hash_args.keys & args).size != args.size then
-            raise ArgumentError, "some required hash keys were missing for #{self.class}: #{args - hash_args.keys}"
-        end
-    end
-
-end

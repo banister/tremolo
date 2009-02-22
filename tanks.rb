@@ -148,10 +148,7 @@ class Tank < VehicleActor
     end
 
     def projectile_collided_with(thing, projec)
-        if logging_level > 2 then
-            article = thing.class.to_s[0,1] =~ /[aeiou]/i ? "an" : "a"
-            puts "#{self.class}'s #{projec.class} collided with #{article} #{thing.class}" 
-        end
+        message "#{self.class}'s #{projec.class} collided with #{article thing.class.to_s} #{thing.class}", :log_level => 2
         
         if thing.instance_of?(SampleActor) then @health += 5; end
     end

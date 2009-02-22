@@ -65,11 +65,15 @@ class ImageSystem
     end
     
     def load_animation(anim_name)
-        @cur_anim_name = anim_name
-        @cur_anim = @anim[anim_name]
-        @frame_counter = 0
-        @timer = Time.now.to_f
-        return @anim[anim_name].frames[0]
+        if @cur_anim_name == anim_name then
+            return @anim[anim_name].frames[@frame_counter]
+        else
+            @cur_anim_name = anim_name
+            @cur_anim = @anim[anim_name]
+            @frame_counter = 0
+            @timer = Time.now.to_f
+            return @anim[anim_name].frames[0]
+        end
     end
     
     def load_queue(*args)
@@ -218,8 +222,6 @@ end
 #timer controller
 class TimerSystem
 
-    include HashArgsModule
-
     TimerStruct = Struct.new(:start_time, :time_out, :action, :repeat)
 
     def initialize
@@ -302,8 +304,9 @@ class MusicSystem
         cur_list = @play_list[@cur_list_name]
         if cur_list[@song_counter].playing? then return; end
         
-        if @loop == false && @song_counter < (cur_list.size - 1) then  #subtract 1 because size and max index are off by 1 
-            @song_counter+=1 
+        # subtract 1 because size and max index are off by 1 
+        if @loop == false && @song_counter < (cur_list.size - 1) then  
+            @song_counter += 1 
             cur_list[@song_counter].play
         elsif @loop == true then
             @song_counter = (@song_counter + 1) % cur_list.size

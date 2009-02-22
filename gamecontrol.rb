@@ -63,7 +63,7 @@ class GameController
                     @jukebox.load_song("assets/music/lush.ogg")]
         
         @jukebox.make_play_list(:soundtrack, playlist)
-        @jukebox.load_play_list(:soundtrack)
+        #@jukebox.load_play_list(:soundtrack)
         @jukebox.loop = true
 
         puts "...done!"

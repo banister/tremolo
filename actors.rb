@@ -227,7 +227,7 @@ class Digger  < VehicleActor
     def check_collision
         check_actor_collision
 
-        if(tile=@env.check_collision(self, 0, @height/2)) then
+        if (tile=@env.check_collision(self, 0, @height/2)) then
 
             self.do_collision(tile)
         end
@@ -253,7 +253,25 @@ class Andy  < Actor
             # allow other forces
             toggle_gravity_only
         end
-        
+
+        def try_walk(direc)
+            
+            5.times { @y -= 1 unless @env.check_collision(self, 0, -@height / 2) }
+            self.x += direc * 5 unless @env.check_collision(self, direc * @width / 2, 0)
+            5.times { @y += 1 unless @env.check_collision(self, 0, @height / 2) }
+
+            @anim.facing = direc
+        end
+
+        def try_jump
+            return if @env.check_collision(self, 0, -@height / 2) || !@env.check_collision(self, 0, @height / 2)
+            
+            self.y -= 5
+            
+            #set an upwards velocity
+            @init_y = JumpPower
+        end
+            
         def do_controls(control_id = nil)
             #block-based control keys
             @controls.each_value { |val| if (yield val) then control_id = val; break; end}
@@ -261,27 +279,22 @@ class Andy  < Actor
             #return self unless control_id
 
             #move right if nothing to the right
-            if @controls[:right] == control_id && !@env.check_collision(self, @width / 2, 0) then
-                self.x += 5
-                ground_hug
-                @anim.facing = 1
-
-            #move left if nothing to the left
-            elsif @controls[:left] == control_id && !@env.check_collision(self, -@width / 2, 0) then
-                self.x -= 5
-                ground_hug
-                @anim.facing = -1
-
-            #jump if nothing above, AND currently on the ground (i.e no jumping while in air)
-            elsif @controls[:jump] == control_id && !@env.check_collision(self, 0, -@height / 2) &&
-                @env.check_collision(self, 0, @height / 2) then
-
-                self.y -= 10
-
-                #set an upwards velocity
-                @init_y = JumpPower
-            else
+            if @controls[:right] == control_id then
                 @anim.load_animation(:running)
+                try_walk(1)
+                
+            #move left if nothing to the left
+            elsif @controls[:left] == control_id then
+                @anim.load_animation(:running)
+                try_walk(-1)
+                
+            #jump if nothing above, AND currently on the ground (i.e no jumping while in air)
+            elsif @controls[:jump] == control_id then
+                try_jump
+                @anim.load_animation(:standard)
+                
+            else
+                @anim.load_animation(:standard)
             end
 
             return self
@@ -317,8 +330,8 @@ class Andy  < Actor
 
     def setup
         setup_gfx do 
-            make_animation(:standard, load_frames("assets/megaman2.png", 45, 62).first)
-            make_animation(:running, load_frames("assets/megaman2.png", 45, 62), :timing => 0.075, :loop => true,
+            make_animation(:standard, load_image("assets/mmstd.png"))
+            make_animation(:running, load_frames("assets/mmrun.png", 45, 62), :timing => 0.075, :loop => true,
                            :hold => false )
         end
 

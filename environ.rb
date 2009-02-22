@@ -281,7 +281,7 @@ class Tile
 
     #override in base-class
     def do_collision(actor, offset_x=0, offset_y=0)
-        puts "A #{self.class} collided with a #{actor.class}" if logging_level > 1
+        message "A #{self.class} collided with a #{actor.class}", :log_level => 2
 
         sx = actor.x + offset_x
         sy = actor.y + offset_y

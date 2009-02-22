@@ -15,12 +15,13 @@ module BoundingBox
     attr_reader :x_offset
     attr_reader :y_offset
 
+    # reduce bounding box size for more refined collisions
+    Shrink = 0.7
+
     def set_bounding_box(xsize, ysize)
 
-        #reduce bounding box size for more refined collisions
-        shrink = 0.7
-        @x_offset = xsize * shrink / 2
-        @y_offset = ysize * shrink / 2
+        @x_offset = xsize * Shrink / 2
+        @y_offset = ysize * Shrink / 2
     end
     
     def intersect?(other)
@@ -48,7 +49,6 @@ class Actor
     include Stateology
     include BoundingBox
     include InterfaceElementActor
-    include HashArgsModule
 
     # state where nothing happens except drawing updates
     state(:Inactive) { 
@@ -62,7 +62,7 @@ class Actor
         end
     }
 
-    #important to use width/height, so as not to use *_offset of boundingbox module, stay loosely coupled
+    # important to use width/height, so as not to use *_offset of boundingbox module, stay loosely coupled
     attr_reader :width, :height
 
     def initialize(hash_args)
@@ -86,7 +86,7 @@ class Actor
 
     def basic_setup(hash_args)
         
-        #Objects are born alive and interactive and self-propelled
+        # Objects are born alive and interactive and self-propelled
         @x, @y = 0
         @cur_tile = nil
         @effects = EffectsSystem.new(@window)
@@ -100,7 +100,7 @@ class Actor
         end
     end
 
-    #must be implemented by subclasses 
+    # must be implemented by subclasses 
     def setup(hash_args); end
 
     def setup_sound(&block)
@@ -203,7 +203,7 @@ class Actor
     def check_actor_collision
         #@cur_tile ||= @env.get_tile(@x, @y)
 
-        #actors aren't always in a tile, e.g falling off screen
+        # actors aren't always in a tile, e.g falling off screen
         #return if !@cur_tile
 
         c_list = @world # @cur_tile.collision_list
@@ -248,7 +248,7 @@ class Actor
     def actor_collision_with?(a)
         #@cur_tile ||= @env.get_tile(@x, @y)
 
-        #actors aren't always in a tile, e.g falling off screen
+        # actors aren't always in a tile, e.g falling off screen
         #return if !@cur_tile
 
         c_list = @world #@cur_tile.collision_list
@@ -271,7 +271,7 @@ class Actor
     def check_bounds
         if @y > Common::SCREEN_Y * 13 || @y < -10 * Common::SCREEN_Y ||
                 @x >Common::SCREEN_X * 13 || @x < -10 * Common::SCREEN_X then
-            puts "#{self.class} fell of the screen at (#{@x.to_i}, #{@y.to_i})" if logging_level > 0
+            message "#{self.class} fell of the screen at (#{@x.to_i}, #{@y.to_i})", :log_level => 0
             remove_from_world(self)
         end 
     end
@@ -280,14 +280,14 @@ class Actor
         s_class = self.class.to_s
         c_class = collider.class.to_s
 
-        puts "#{article s_class} #{s_class} collided with #{article c_class} #{c_class}" if logging_level > 1
+        message "#{article s_class} #{s_class} collided with #{article c_class} #{c_class}", :log_level => 2
     end
 
     def article(noun)
         noun[0, 1] =~ /[aeiou]/i ? "an" : "a"        
     end
 
- #    def x=(v)
+#     def x=(v)
 #         return @x = v if !@y
 
 #         @x = v

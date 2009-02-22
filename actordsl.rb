@@ -1,6 +1,5 @@
 #this class provides a DSL for actor creation
 class ActorDSL
-    include HashArgsModule
     
     def initialize(game_state)
         @gs = game_state
