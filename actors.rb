@@ -75,10 +75,10 @@ class SampleActor < Actor
         destructor = lambda { remove_from_world(self) }
         
         setup_gfx(:destructor => destructor) do
-            make_animation(:dying, load_frames("assets/lanternsmoke.png",20,18),:timing => 0.05,
+            make_animation(:dying, load_frames("assets/lanternsmoke.png",20, 18),:timing => 0.05,
                            :loop => false, :hold => false)
 
-            make_animation(:standard, load_frames("assets/lanternsmoke.png",20,18).first)
+            make_animation(:standard, load_frames("assets/lanternsmoke.png",20, 18).first)
         end
 
         setup_sound do
@@ -244,7 +244,7 @@ end
 class Andy  < Actor
 
     include Physical
-    include InterfaceElementControllable
+    include InterfaceElementAndy
 
     JumpPower = 60
 
@@ -258,42 +258,45 @@ class Andy  < Actor
             #block-based control keys
             @controls.each_value { |val| if (yield val) then control_id = val; break; end}
 
-            return self unless control_id
+            #return self unless control_id
 
             #move right if nothing to the right
             if @controls[:right] == control_id && !@env.check_collision(self, @width / 2, 0) then
-                self.x+=5
+                self.x += 5
                 ground_hug
-            end
+                @anim.facing = 1
 
             #move left if nothing to the left
-            if @controls[:left] == control_id && !@env.check_collision(self, -@width / 2, 0) then
-                self.x-=5
+            elsif @controls[:left] == control_id && !@env.check_collision(self, -@width / 2, 0) then
+                self.x -= 5
                 ground_hug
-            end
+                @anim.facing = -1
 
             #jump if nothing above, AND currently on the ground (i.e no jumping while in air)
-            if @controls[:jump] == control_id && !@env.check_collision(self, 0, -@height / 2) &&
+            elsif @controls[:jump] == control_id && !@env.check_collision(self, 0, -@height / 2) &&
                 @env.check_collision(self, 0, @height / 2) then
 
-                self.y-=10
+                self.y -= 10
 
                 #set an upwards velocity
                 @init_y = JumpPower
+            else
+                @anim.load_animation(:running)
             end
 
             return self
         end
 
         def ground_hug
-            prev = @y
+            @y = @y.to_i
+            prev = @y.to_i
             if @init_y == 0 then
 
                 #why 12 ? cos this factor is perfect for climbing steep hills
                 #if > 12 unnecessary looping (expensive) if < 12 then can't climb steep hills
-                @y-=@height / 8
+                @y -= (@height / 8).to_i
                 begin
-                    @y+=1
+                    @y += 1
 
                     #if ground is more than 30 pixels away then dont 'hug'; just fall instead
                     if (@y - prev) > 30 then
@@ -308,12 +311,15 @@ class Andy  < Actor
         def state_exit
             # only allow gravity
             toggle_gravity_only
+            @anim.load_animation(:standard)
         end
     }
 
     def setup
         setup_gfx do 
-            make_animation(:standard, load_image("assets/dude.png"))
+            make_animation(:standard, load_frames("assets/megaman2.png", 45, 62).first)
+            make_animation(:running, load_frames("assets/megaman2.png", 45, 62), :timing => 0.075, :loop => true,
+                           :hold => false )
         end
 
         setup_controls

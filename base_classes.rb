@@ -107,15 +107,14 @@ class Actor
         @effects.instance_eval(&block)
     end
 
-    def setup_gfx(*hash_args, &block)
-        h = { :x => method(:x), :y => method(:y) }
+    def setup_gfx(hash_args={}, &block)
+        h = { :x => method(:x),
+            :y => method(:y)
+        }.merge(hash_args)
 
-        if hash_args.first.instance_of?(Hash) then
-            h.merge!(hash_args.first)
 
-            # get the destructor block for register_animation (if there is one)
-            d = h.delete(:destructor)
-        end
+        # get the destructor block for register_animation (if there is one)
+        d = h.delete(:destructor)
 
         anim = register_animation(:self, h, &d) 
 
@@ -224,6 +223,20 @@ class Actor
         end
     end
 
+    def current_collisions
+        collision_list = []
+
+        @world.each do |thing|
+            next if thing == self
+            
+            if intersect?(thing) then
+                collision_list.push(thing)
+            end
+        end
+
+        collision_list
+    end
+
     def check_tile_collision
         if tile=@env.check_collision(self, 0, @height / 2) then
             self.do_collision(tile)
@@ -310,7 +323,10 @@ class Actor
         self.x = xv
         self.y = yv
     end
-    
+
+    def dist(o1, o2)
+        Math::hypot(o1.x - o2.x, o1.y - o2.y)
+    end
 
     # check to see whether object is currently on screen,
     # **SHOULD BE DEPRECATED SOON AS FUNCTIONALITY BEING MOVED TO AnimGroup Class**

@@ -124,7 +124,7 @@ class EnvironmentController
         #draw the tiles
         @height.times do |y|
             @width.times do |x|
-                if tile=@tiles[y][x] then tile.draw(x,y,ox,oy);end
+                if tile=@tiles[y][x] then tile.draw(x,y,ox,oy) end
             end
         end
     end
@@ -155,6 +155,9 @@ class Tile
         @map_to_screen = map_to_screen
         @screen_to_map = screen_to_map
         @t_type = t_type
+
+        #TEMPORARY, FIX SOON
+        @drillmask = Gosu::Image.new(@window, "assets/drillmask.png") 
 
         #for misc animations associated with this tile
         @anim_group = AnimGroup.new
@@ -241,52 +244,51 @@ class Tile
 
         #might need to add tests for other directions too (e.g sx < 0 && sx > MAX && sy > MAX etc)
         return if sy < 0 
-        if TexPlay.get_pixel(@image, sx, sy)[3] !=0 then return self;  end
+        if @image.get_pixel(sx, sy)[3] !=0 then return self;  end
+    end
+
+    def splash_damage_center(x, y, x_width, y_width, meth_name)
+        
+        #splash damage for other tiles
+        tile = @env.get_tile(x + x_width, y)
+        if(tile && tile != self) then tile.send meth_name, x - tile.x, y - tile.y; end
+
+        tile = @env.get_tile(x - x_width, y)
+        if(tile && tile != self) then tile.send meth_name, x - tile.x, y - tile.y; end
+
+        tile = @env.get_tile(x, y  + y_width)
+        if(tile && tile != self) then tile.send meth_name, x - tile.x, y - tile.y; end
+
+        tile = @env.get_tile(x, y  - y_width)
+        if(tile && tile != self) then tile.send meth_name, x - tile.x, y - tile.y; end
+
+        tile = @env.get_tile(x - x_width, y  - y_width)
+        if(tile && tile != self) then tile.send meth_name, x - tile.x, y - tile.y; end
+
+        tile = @env.get_tile(x + x_width, y  - y_width)
+        if(tile && tile != self) then tile.send meth_name, x - tile.x, y - tile.y; end
+
+        tile = @env.get_tile(x - x_width, y  + y_width)
+        if(tile && tile != self) then tile.send meth_name, x - tile.x, y - tile.y; end
+
+        tile = @env.get_tile(x + x_width, y  + y_width)
+        if(tile && tile != self) then tile.send meth_name, x - tile.x, y - tile.y; end
+
+
+        #damage for this tile
+        send meth_name, x - @x, y - @y
     end
 
     #override in base-class
     def do_collision(actor, offset_x=0, offset_y=0)
         puts "A #{self.class} collided with a #{actor.class}" if logging_level > 1
 
-        s = OpenStruct.new
-
-        s.x = actor.x + offset_x
-        s.y = actor.y + offset_y
-
-        #convert from screen coords to local coords of tile, with origin at top left
-        vx = s.x - @x
-        vy = s.y - @y
+        sx = actor.x + offset_x
+        sy = actor.y + offset_y
 
         damage_block = lambda do
-            #splash damage for other tiles
-            tile = @env.get_tile(s.x + Radius_Dmg, s.y)
-            if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
-
-            tile = @env.get_tile(s.x - Radius_Dmg, s.y)
-            if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
-
-            tile = @env.get_tile(s.x, s.y  + Radius_Dmg)
-            if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
-
-            tile = @env.get_tile(s.x, s.y  - Radius_Dmg)
-            if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
-
-            tile = @env.get_tile(s.x - Radius_Dmg, s.y  - Radius_Dmg)
-            if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
-
-            tile = @env.get_tile(s.x + Radius_Dmg, s.y  - Radius_Dmg)
-            if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
-
-            tile = @env.get_tile(s.x - Radius_Dmg, s.y  + Radius_Dmg)
-            if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
-
-            tile = @env.get_tile(s.x + Radius_Dmg, s.y  + Radius_Dmg)
-            if(tile && tile != self) then tile.do_damage(s.x - tile.x, s.y - tile.y); end
-
-
-            #damage for this tile
-            do_damage(vx, vy)
-       end
+            splash_damage_center(sx, sy, Radius_Dmg + 8, Radius_Dmg + 8, :do_damage_proj)
+        end
 
         case actor
         when Projectile
@@ -299,21 +301,34 @@ class Tile
 
             new_anim.load_queue(:blast)
         when Digger
-            damage_block.call
+            splash_damage_center(sx, sy, (@drillmask.width / 2), (@drillmask.height / 2), :do_damage_drill)
         else
             # no behaviour yet 
         end
 
     end
 
-    def do_damage(x, y)
-        r = Radius_Dmg
-        TexPlay.draw(@image) {
-            color :alpha
-            circle x, y, r
+    def do_damage_drill(x, y)
+        
+        @image.paint { |c|
+            c.splice(@drillmask, x - (@drillmask.width / 2), y - (@drillmask.height / 2), :mask => :_white)
         }
     end
 
+    def do_damage_proj(x, y)
+
+        @image.paint { |c|
+            5.times {
+                dx = rand(16) - 8
+                dy = rand(16) - 8
+
+                c.color :alpha
+                c.circle x + dx, y + dy, Radius_Dmg
+            }
+        }
+    end
+
+    
     def info
         "Object information:\nType: #{self.class}; Sub-type: #{@t_type}"
     end

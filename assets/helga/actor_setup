@@ -1,5 +1,5 @@
 create_actors :amount => 7, :class => SampleActor
-create_actors :amount => 10, :class => Andy
+create_actors :amount => 5, :class => Andy
 create_actors :amount => 10, :class => Physor  do _ :mag => rand(40) - 20 end
 create_actors :amount => 5, :class => Digger 
 create_actor :class => RedTank, :warp => [50, 563]

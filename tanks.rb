@@ -123,11 +123,11 @@ class Tank < VehicleActor
                         rel_y = (thing.y - y_orig).to_i
 
                         if @facing == 1 then
-                            pixel = TexPlay.get_pixel(img, (thing.x - x_orig).to_i, (thing.y - y_orig).to_i)
+                            pixel = img.get_pixel((thing.x - x_orig).to_i, (thing.y - y_orig).to_i)
                             return if !pixel
                             pixel = pixel[3] != 0
                         else
-                            pixel = TexPlay.get_pixel(img, img.width - (thing.x - x_orig).to_i, (thing.y - y_orig).to_i)
+                            pixel = img.get_pixel(img.width - (thing.x - x_orig).to_i, (thing.y - y_orig).to_i)
                             return if !pixel
                             pixel = pixel[3] != 0
                         end

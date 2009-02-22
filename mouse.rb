@@ -198,7 +198,7 @@ class MousePtr
             @rot = 0
         end
         
-        @image.update.draw_rot(@rx,@ry,Common::ZOrder::Mouse,@rot)
+        @image.update.draw_rot(@rx, @ry, Common::ZOrder::Mouse, @rot)
     end
 
     #determine game object selected by mouse
