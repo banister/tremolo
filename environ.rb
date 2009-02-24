@@ -42,7 +42,6 @@ class EnvironmentController
         @tile_theme[:desert] = DesertTile
         @tile_theme[:lush] = LushTile
         @tile_theme[:helga] = HelgaTile
-        @tile_theme[:evian] = EvianTile
     end
 
     def load_env(thememap)
@@ -142,11 +141,10 @@ class Tile
     #utility class
     Clr = Struct.new(:r,:g,:b,:a)
 
-    Radius_Dmg = 30
+    Radius_Dmg = 25
 
     attr_reader :x,:y
 
-    #meaningless but necessary for consistent interface
     def initialize(window, loglevel, env, map_to_screen, screen_to_map, t_type, x, y)
         @@count_instance += 1
         @window = window
@@ -155,6 +153,7 @@ class Tile
         @map_to_screen = map_to_screen
         @screen_to_map = screen_to_map
         @t_type = t_type
+        @particles = Array.new
 
         #TEMPORARY, FIX SOON
         @drillmask = Gosu::Image.new(@window, "assets/drillmask.png") 
@@ -185,25 +184,27 @@ class Tile
     end
 
     def setup_gfx
-        #get filename of tile image
+        # get filename of tile image
         file = "assets/#{@theme}/#{@theme}#{@t_type}.png"
 
-        @image = Gosu::Image.new(@window, file)
+        @image = Gosu::Image.new(@window, file, false)
 
-        @blast = Gosu::Image.load_tiles(@window,"assets/blast.png", 33, 32, false)
+        @smoke = Gosu::Image.new(@window, "assets/smoke.png")
+        @explode =  Gosu::Image.load_tiles(@window, "assets/explosion.png", 128,
+                                           128, false)
 
         @width = @image.width
         @height = @image.height
     end
 
 
-    #standard, override in subclasses
+    # standard, override in subclasses
     def setup_sound
         @effects = EffectsSystem.new(@window)
         @effects.add_effect(:thud, "assets/sand2.ogg")
     end
 
-    #NOTE: equation is different from Actor's as Tiles are drawn from TOP LEFT, not center
+    # NOTE: equation is different from Actor's as Tiles are drawn from TOP LEFT, not center
     def visible?(sx,sy)
         (sx + @width > 0 && sx < Common::SCREEN_X && sy + @height > 0 &&
          sy < Common::SCREEN_Y)
@@ -221,16 +222,19 @@ class Tile
         @c_list
     end
 
-    def draw(x,y,ox,oy)
+    def draw(x, y, ox, oy)
         x,y = @map_to_screen.call(x,y)
 
         #screen coords
         sx = x - ox
         sy = y - oy
 
-        return if !visible?(sx,sy)
+        @particles.each { |v| v.update; v.draw(ox, oy) }
 
+        return if !visible?(sx,sy)
+        
         @image.draw(sx, sy, Common::ZOrder::Tile)
+
 
         @anim_group.draw(ox, oy)
 
@@ -286,22 +290,39 @@ class Tile
         sx = actor.x + offset_x
         sy = actor.y + offset_y
 
-        damage_block = lambda do
+        damage_block = lambda do 
             splash_damage_center(sx, sy, Radius_Dmg + 8, Radius_Dmg + 8, :do_damage_proj)
-        end
+       end
 
         case actor
         when Projectile
             @effects.play_effect(:thud)
 
+            splash_damage_center(sx, sy, Radius_Dmg + 8, Radius_Dmg + 8, :do_damage_proj)
+
             new_anim = @anim_group.new_entry(:blast, :x => actor.x, :y => actor.y,
-                                             :anim => ImageSystem.new(@window), &damage_block)
-
-            new_anim.make_animation(:blast, @blast,:timing => 0.06,:loop => false, :hold => false)
-
+                                             :anim => ImageSystem.new(@window))
+ 
+            new_anim.make_animation(:blast, @explode,
+                                    :timing => 0.06,:loop => false, :hold => false)
+ 
             new_anim.load_queue(:blast)
+
+            5.times {
+                Particle.new(@window, @smoke,
+                             actor.x, actor.y, @particles, :fade_rate => 4, :scale => 0.5, :speed => 3)
+            }
+            
         when Digger
             splash_damage_center(sx, sy, (@drillmask.width / 2), (@drillmask.height / 2), :do_damage_drill)
+            
+            16.times {
+                Particle.new(@window, @smoke,
+                             actor.x, actor.y + offset_y - 50 + rand(5), @particles,
+                             :speed => 2, :scale => :rand, :fade_rate => 1,
+                             :x_scatter => @smoke.width, :y_scatter => @smoke.height)
+            }
+            
         else
             # no behaviour yet 
         end
@@ -340,6 +361,56 @@ class Tile
 
     private :round_to_mult, :setup_gfx, :setup_sound, :visible?
 
+end
+
+class Particle
+    def initialize(window, anim, x, y, particles, options={})
+        @options = {
+            :scale => 1,
+            :speed => 1,
+            :fade_rate => 1,
+            :x_scatter => anim.width,
+            :y_scatter => anim.height
+        }.merge(options)
+
+        if @options[:scale] == :rand then
+            @options[:scale] = rand * 0.70
+        end
+        
+        # All Particle instances use the same image
+        @image = anim
+        @particles = particles
+        scale = @options[:scale]
+        x_scatter = @options[:x_scatter]
+        y_scatter = @options[:y_scatter]
+        
+        @x = (x + rand(x_scatter) * scale - (x_scatter * scale / 2)).to_i
+        @y = (y + rand(y_scatter) * scale  - (y_scatter * scale / 2)).to_i
+        
+        @color = Gosu::Color.new(255, 255, 255, 255)
+        
+        @particles.push self
+    end
+    
+    def update
+        @y -= @options[:speed]
+        @x = @x - 1 + rand(3)
+
+        fade_rate = @options[:fade_rate]
+        
+        @color.alpha -= @color.alpha >= fade_rate ? @options[:fade_rate] : 1
+        
+        # Remove if faded completely.
+        if @y < 0 || @color.alpha <= 0 then
+            @particles.delete(self)
+        end
+        
+        def draw(ox, oy)
+            scale = @options[:scale]
+            @image.draw_rot(@x - ox, @y - oy, 1, 0, 0.5, 0.5, scale, scale, @color)
+        end
+        
+    end
 end
 
 #desert tile class

@@ -45,7 +45,7 @@ end
 #Abstract base class for all objects in world
 class Actor
 
-    #mix in the module with the class
+    # mix in module functionality
     include Stateology
     include BoundingBox
     include InterfaceElementActor
@@ -81,7 +81,7 @@ class Actor
             basic_setup(hash_args)
         end
 
-        puts "creating #{article self.class.to_s} #{self.class}"
+        message "creating #{article self.class.to_s} #{self.class}", :log_level => 2
     end
 
     def basic_setup(hash_args)

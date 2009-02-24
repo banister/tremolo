@@ -260,6 +260,7 @@ class Andy  < Actor
             self.x += direc * 5 unless @env.check_collision(self, direc * @width / 2, 0)
             5.times { @y += 1 unless @env.check_collision(self, 0, @height / 2) }
 
+            @anim.load_animation(:running)
             @anim.facing = direc
         end
 
@@ -267,37 +268,32 @@ class Andy  < Actor
             return if @env.check_collision(self, 0, -@height / 2) || !@env.check_collision(self, 0, @height / 2)
             
             self.y -= 5
-            
-            #set an upwards velocity
+            @anim.load_animation(:standard)
+
+            # set an upwards velocity
             @init_y = JumpPower
         end
             
         def do_controls(control_id = nil)
-            #block-based control keys
+            # block-based control keys
             @controls.each_value { |val| if (yield val) then control_id = val; break; end}
 
-            #return self unless control_id
+            # return self unless control_id
 
-            #move right if nothing to the right
+            # move right if nothing to the right
             if @controls[:right] == control_id then
-                @anim.load_animation(:running)
                 try_walk(1)
                 
-            #move left if nothing to the left
+            # move left if nothing to the left
             elsif @controls[:left] == control_id then
-                @anim.load_animation(:running)
                 try_walk(-1)
                 
-            #jump if nothing above, AND currently on the ground (i.e no jumping while in air)
+            # jump if nothing above, AND currently on the ground (i.e no jumping while in air)
             elsif @controls[:jump] == control_id then
                 try_jump
-                @anim.load_animation(:standard)
-                
             else
                 @anim.load_animation(:standard)
             end
-
-            return self
         end
 
         def ground_hug
@@ -305,13 +301,13 @@ class Andy  < Actor
             prev = @y.to_i
             if @init_y == 0 then
 
-                #why 12 ? cos this factor is perfect for climbing steep hills
-                #if > 12 unnecessary looping (expensive) if < 12 then can't climb steep hills
+                # why 12 ? cos this factor is perfect for climbing steep hills
+                # if > 12 unnecessary looping (expensive) if < 12 then can't climb steep hills
                 @y -= (@height / 8).to_i
                 begin
                     @y += 1
 
-                    #if ground is more than 30 pixels away then dont 'hug'; just fall instead
+                    # if ground is more than 30 pixels away then dont 'hug'; just fall instead
                     if (@y - prev) > 30 then
                         @y = prev
                         break
@@ -358,20 +354,20 @@ class Andy  < Actor
 
         new_x, new_y = do_physics
         
-        #if collide with tile on way up then begin descent immediately
+        # if collide with tile on way up then begin descent immediately
         if @env.check_collision(self, 0, -@height / 2) then @init_y = 0 end
         
-        #determine direction of new coords
+        # determine direction of new coords
         x_direc = new_x > @x ? 1 : -1
         y_direc = new_y > @y ? 1 : -1
         
-        #don't apply horizontal physics if obstructions to the left or right
+        # don't apply horizontal physics if obstructions to the left or right
         if !@env.check_collision(self, x_direc * @width / 2, 0) then
-            self.x = new_x
+            self.x = new_x 
             ground_hug
         end
         
-        #dont apply vertical physics if obstructions above or below
+        # dont apply vertical physics if obstructions above or below
         if !@env.check_collision(self, 0, y_direc * @height / 2) then
             self.y = new_y
         end

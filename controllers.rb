@@ -29,7 +29,7 @@ class ImageSystem
     end
     
     def load_image(filename)
-        return Gosu::Image.new(@window,filename)
+        return Gosu::Image.new(@window, filename, false)
     end
     
     def load_frames(filename,frame_width,frame_height)
